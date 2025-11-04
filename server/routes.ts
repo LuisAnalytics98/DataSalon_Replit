@@ -75,6 +75,24 @@ function requireRole(...allowedRoles: Array<"owner" | "admin" | "employee">) {
   };
 }
 
+// Middleware to check if user is super admin
+function requireSuperAdmin(req: Request, res: Response, next: NextFunction) {
+  if (!req.user?.email) {
+    return res.status(401).json({ error: "Authentication required" });
+  }
+  
+  const superAdminEmail = process.env.SUPER_ADMIN_EMAIL;
+  if (!superAdminEmail) {
+    return res.status(500).json({ error: "Super admin not configured" });
+  }
+  
+  if (req.user.email !== superAdminEmail) {
+    return res.status(403).json({ error: "Super admin access required" });
+  }
+  
+  next();
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup Replit authentication
   setupAuth(app);
@@ -322,6 +340,108 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error setting stylist availability:", error);
       res.status(400).json({ error: "Failed to set stylist availability" });
+    }
+  });
+
+  // ===== SUPER ADMIN ROUTES (Super admin only) =====
+  
+  // Get all salons
+  app.get("/api/superadmin/salons", isAuthenticated, requireSuperAdmin, async (req, res) => {
+    try {
+      const salons = await storage.getAllSalons();
+      res.json(salons);
+    } catch (error) {
+      console.error("Error fetching salons:", error);
+      res.status(500).json({ error: "Failed to fetch salons" });
+    }
+  });
+
+  // Create a new salon
+  app.post("/api/superadmin/salons", isAuthenticated, requireSuperAdmin, async (req, res) => {
+    try {
+      const validatedSalon = insertSalonSchema.parse(req.body);
+      const salon = await storage.createSalon(validatedSalon);
+      res.json(salon);
+    } catch (error) {
+      console.error("Error creating salon:", error);
+      res.status(400).json({ error: "Failed to create salon" });
+    }
+  });
+
+  // Update a salon
+  app.patch("/api/superadmin/salons/:id", isAuthenticated, requireSuperAdmin, async (req, res) => {
+    try {
+      const salon = await storage.updateSalon(req.params.id, req.body);
+      if (!salon) {
+        return res.status(404).json({ error: "Salon not found" });
+      }
+      res.json(salon);
+    } catch (error) {
+      console.error("Error updating salon:", error);
+      res.status(400).json({ error: "Failed to update salon" });
+    }
+  });
+
+  // Delete a salon
+  app.delete("/api/superadmin/salons/:id", isAuthenticated, requireSuperAdmin, async (req, res) => {
+    try {
+      const success = await storage.deleteSalon(req.params.id);
+      if (!success) {
+        return res.status(404).json({ error: "Salon not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting salon:", error);
+      res.status(500).json({ error: "Failed to delete salon" });
+    }
+  });
+
+  // Get all users
+  app.get("/api/superadmin/users", isAuthenticated, requireSuperAdmin, async (req, res) => {
+    try {
+      const users = await storage.getAllUsers();
+      res.json(users);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ error: "Failed to fetch users" });
+    }
+  });
+
+  // Get users for a specific salon
+  app.get("/api/superadmin/salons/:id/users", isAuthenticated, requireSuperAdmin, async (req, res) => {
+    try {
+      const salonUsers = await storage.getSalonUsers(req.params.id);
+      res.json(salonUsers);
+    } catch (error) {
+      console.error("Error fetching salon users:", error);
+      res.status(500).json({ error: "Failed to fetch salon users" });
+    }
+  });
+
+  // Assign user to salon
+  app.post("/api/superadmin/salon-users", isAuthenticated, requireSuperAdmin, async (req, res) => {
+    try {
+      const validatedSalonUser = insertSalonUserSchema.parse(req.body);
+      const salonUser = await storage.createSalonUser(validatedSalonUser);
+      res.json(salonUser);
+    } catch (error) {
+      console.error("Error assigning user to salon:", error);
+      res.status(400).json({ error: "Failed to assign user to salon" });
+    }
+  });
+
+  // Remove user from salon
+  app.delete("/api/superadmin/salon-users", isAuthenticated, requireSuperAdmin, async (req, res) => {
+    try {
+      const { userId, salonId } = req.body;
+      const success = await storage.deleteSalonUser(userId, salonId);
+      if (!success) {
+        return res.status(404).json({ error: "User assignment not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error removing user from salon:", error);
+      res.status(500).json({ error: "Failed to remove user from salon" });
     }
   });
 

@@ -39,11 +39,19 @@ export interface IStorage {
   // Salons
   getSalonById(id: string): Promise<Salon | undefined>;
   getSalonBySlug(slug: string): Promise<Salon | undefined>;
+  getAllSalons(): Promise<Salon[]>;
   createSalon(salon: InsertSalon): Promise<Salon>;
+  updateSalon(id: string, salon: Partial<InsertSalon>): Promise<Salon | undefined>;
+  deleteSalon(id: string): Promise<boolean>;
   
   // Salon Users
   createSalonUser(salonUser: InsertSalonUser): Promise<SalonUser>;
   getUserSalons(userId: string): Promise<SalonUser[]>;
+  getSalonUsers(salonId: string): Promise<Array<SalonUser & { user: User }>>;
+  deleteSalonUser(userId: string, salonId: string): Promise<boolean>;
+  
+  // Super Admin User Management
+  getAllUsers(): Promise<User[]>;
   
   // Clients
   createClient(client: InsertClient): Promise<Client>;
@@ -134,9 +142,26 @@ export class DbStorage implements IStorage {
     return salon;
   }
 
+  async getAllSalons(): Promise<Salon[]> {
+    return await db.select().from(salons);
+  }
+
   async createSalon(insertSalon: InsertSalon): Promise<Salon> {
     const [salon] = await db.insert(salons).values(insertSalon).returning();
     return salon;
+  }
+
+  async updateSalon(id: string, updateData: Partial<InsertSalon>): Promise<Salon | undefined> {
+    const [salon] = await db.update(salons)
+      .set(updateData)
+      .where(eq(salons.id, id))
+      .returning();
+    return salon;
+  }
+
+  async deleteSalon(id: string): Promise<boolean> {
+    const result = await db.delete(salons).where(eq(salons.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
   }
 
   // Salon Users
@@ -147,6 +172,33 @@ export class DbStorage implements IStorage {
 
   async getUserSalons(userId: string): Promise<SalonUser[]> {
     return await db.select().from(salonUsers).where(eq(salonUsers.userId, userId));
+  }
+
+  async getSalonUsers(salonId: string): Promise<Array<SalonUser & { user: User }>> {
+    const results = await db
+      .select({
+        salonUser: salonUsers,
+        user: users,
+      })
+      .from(salonUsers)
+      .leftJoin(users, eq(salonUsers.userId, users.id))
+      .where(eq(salonUsers.salonId, salonId));
+
+    return results.map(r => ({
+      ...r.salonUser,
+      user: r.user!,
+    }));
+  }
+
+  async deleteSalonUser(userId: string, salonId: string): Promise<boolean> {
+    const result = await db.delete(salonUsers)
+      .where(and(eq(salonUsers.userId, userId), eq(salonUsers.salonId, salonId)));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  // Super Admin User Management
+  async getAllUsers(): Promise<User[]> {
+    return await db.select().from(users);
   }
 
   // Clients
