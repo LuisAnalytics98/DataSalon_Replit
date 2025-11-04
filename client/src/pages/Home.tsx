@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useParams } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import Header from "@/components/Header";
 import ProgressStepper from "@/components/ProgressStepper";
@@ -37,6 +38,7 @@ const steps = [
 ];
 
 export default function Home() {
+  const params = useParams<{ salonSlug?: string }>();
   const [currentStep, setCurrentStep] = useState(1);
   const [bookingData, setBookingData] = useState<{
     clientInfo?: ClientInfo;
@@ -47,8 +49,15 @@ export default function Home() {
   }>({});
   const [confirmedBooking, setConfirmedBooking] = useState<BookingWithDetails | null>(null);
 
-  // Salon slug (hardcoded for now, will be dynamic when multi-salon support is added)
-  const salonSlug = "demo-salon";
+  // Get salon slug from URL, default to demo-salon if accessing via root path
+  const salonSlug = params.salonSlug || "demo-salon";
+
+  // Reset booking state when salon slug changes to prevent cross-salon data corruption
+  useEffect(() => {
+    setCurrentStep(1);
+    setBookingData({});
+    setConfirmedBooking(null);
+  }, [salonSlug]);
 
   // Fetch services from backend
   const { data: services = [], isLoading: servicesLoading } = useQuery<Service[]>({
