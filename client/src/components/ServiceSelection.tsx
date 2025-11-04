@@ -81,8 +81,11 @@ export default function ServiceSelection({ services, onContinue, initialService,
                     {service.description}
                   </p>
                   
-                  <div className="text-2xl font-bold text-foreground">
-                    ${service.price}
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Precio aproximado</p>
+                    <div className="text-2xl font-bold text-foreground">
+                      {service.currency === "dolares" ? "$" : "₡"}{service.price}
+                    </div>
                   </div>
                 </div>
               </Card>

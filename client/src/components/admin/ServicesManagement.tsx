@@ -411,9 +411,11 @@ export default function ServicesManagement() {
                   <Clock className="w-4 h-4" />
                   <span>{service.duration}</span>
                 </div>
-                <div className="flex items-center gap-1 font-semibold text-primary">
-                  <DollarSign className="w-4 h-4" />
-                  <span>{service.price}</span>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Precio aprox.</p>
+                  <div className="flex items-center gap-1 font-semibold text-primary">
+                    <span>{service.currency === "dolares" ? "$" : "₡"}{service.price}</span>
+                  </div>
                 </div>
               </div>
             </CardContent>

@@ -83,7 +83,9 @@ export default function BookingConfirmation({
                     <span>{service.duration}</span>
                   </div>
                   <span>•</span>
-                  <span className="font-semibold text-foreground">${service.price}</span>
+                  <span className="font-semibold text-foreground">
+                    {service.currency === "dolares" ? "$" : "₡"}{service.price}
+                  </span>
                 </div>
               </div>
             </div>
