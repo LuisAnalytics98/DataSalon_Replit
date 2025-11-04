@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Plus, Pencil, Trash2, Clock, DollarSign, Image, Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -18,10 +19,12 @@ export default function ServicesManagement() {
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [formData, setFormData] = useState<InsertService>({
     id: "",
+    salonId: "",
     name: "",
     description: "",
     duration: "",
     price: 0,
+    currency: "colones",
     photo: "",
   });
   const { toast } = useToast();
@@ -142,10 +145,12 @@ export default function ServicesManagement() {
   const resetForm = () => {
     setFormData({
       id: "",
+      salonId: "",
       name: "",
       description: "",
       duration: "",
       price: 0,
+      currency: "colones",
       photo: "",
     });
     setEditingService(null);
@@ -165,10 +170,12 @@ export default function ServicesManagement() {
     setEditingService(service);
     setFormData({
       id: service.id,
+      salonId: service.salonId,
       name: service.name,
       description: service.description,
       duration: service.duration,
       price: service.price,
+      currency: service.currency || "colones",
       photo: service.photo || "",
     });
     setIsDialogOpen(true);
@@ -269,21 +276,21 @@ export default function ServicesManagement() {
                   </p>
                 </div>
                 
+                <div>
+                  <Label htmlFor="service-duration">Duración</Label>
+                  <Input
+                    id="service-duration"
+                    data-testid="input-service-duration"
+                    value={formData.duration}
+                    onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
+                    placeholder="ej: 60 min"
+                    required
+                  />
+                </div>
+                
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="service-duration">Duración</Label>
-                    <Input
-                      id="service-duration"
-                      data-testid="input-service-duration"
-                      value={formData.duration}
-                      onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
-                      placeholder="ej: 60 min"
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="service-price">Precio ($)</Label>
+                    <Label htmlFor="service-price">Precio Aproximado</Label>
                     <Input
                       id="service-price"
                       data-testid="input-service-price"
@@ -293,6 +300,22 @@ export default function ServicesManagement() {
                       placeholder="ej: 75"
                       required
                     />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="service-currency">Moneda</Label>
+                    <Select
+                      value={formData.currency}
+                      onValueChange={(value) => setFormData({ ...formData, currency: value })}
+                    >
+                      <SelectTrigger id="service-currency" data-testid="select-service-currency">
+                        <SelectValue placeholder="Selecciona moneda" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="dolares">Dólares ($)</SelectItem>
+                        <SelectItem value="colones">Colones (₡)</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               </div>

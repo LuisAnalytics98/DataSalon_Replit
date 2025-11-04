@@ -28,6 +28,7 @@ export async function seedDemoSalon() {
         description: "Corte de cabello profesional y peinado adaptado a tus preferencias",
         duration: "60 min",
         price: 65,
+        currency: "dolares",
       }),
       storage.createService({
         id: `${salon.id}-manicure`,
@@ -36,6 +37,7 @@ export async function seedDemoSalon() {
         description: "Cuidado completo de uñas con limado, pulido y esmaltado",
         duration: "45 min",
         price: 45,
+        currency: "dolares",
       }),
       storage.createService({
         id: `${salon.id}-pedicure`,
@@ -44,6 +46,7 @@ export async function seedDemoSalon() {
         description: "Tratamiento relajante para pies con exfoliación y cuidado de uñas",
         duration: "60 min",
         price: 55,
+        currency: "dolares",
       }),
     ]);
 

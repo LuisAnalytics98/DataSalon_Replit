@@ -59,6 +59,7 @@ export const services = pgTable("services", {
   description: text("description").notNull(),
   duration: text("duration").notNull(),
   price: integer("price").notNull(),
+  currency: text("currency").notNull().default("colones"), // "dolares" or "colones"
   photo: text("photo"), // URL or file path for service photo
   imageUrl: text("image_url"), // URL for uploaded service image from object storage
 });
