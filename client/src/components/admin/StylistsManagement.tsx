@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { Stylist, InsertStylist, StylistAvailability, InsertStylistAvailability, Service } from "@shared/schema";
+import type { Stylist, InsertStylist, StylistAvailability, InsertStylistAvailability, Service, User } from "@shared/schema";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Pencil, Trash2, Star, Briefcase, Calendar, Clock } from "lucide-react";
+import { Plus, Pencil, Trash2, Star, Briefcase, Calendar, Clock, UserCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -36,10 +36,12 @@ export default function StylistsManagement() {
   const [availabilityStylist, setAvailabilityStylist] = useState<Stylist | null>(null);
   const [formData, setFormData] = useState<InsertStylist>({
     id: "",
+    salonId: "", // Will be set when creating/updating
     name: "",
     experience: "",
     rating: 40,
     specialties: [],
+    userId: null,
   });
   const [availabilitySlots, setAvailabilitySlots] = useState<AvailabilitySlot[]>([]);
   const { toast } = useToast();
@@ -50,6 +52,10 @@ export default function StylistsManagement() {
 
   const { data: services = [] } = useQuery<Service[]>({
     queryKey: ["/api/admin/services"],
+  });
+
+  const { data: salonUsers = [] } = useQuery<Array<{ user: User }>>({
+    queryKey: ["/api/admin/users"],
   });
 
   const { data: stylistAvailability = [] } = useQuery<StylistAvailability[]>({
@@ -155,10 +161,12 @@ export default function StylistsManagement() {
   const resetForm = () => {
     setFormData({
       id: "",
+      salonId: "",
       name: "",
       experience: "",
       rating: 40,
       specialties: [],
+      userId: null,
     });
     setEditingStylist(null);
   };
@@ -177,10 +185,12 @@ export default function StylistsManagement() {
     setEditingStylist(stylist);
     setFormData({
       id: stylist.id,
+      salonId: stylist.salonId,
       name: stylist.name,
       experience: stylist.experience,
       rating: stylist.rating,
       specialties: stylist.specialties,
+      userId: stylist.userId || null,
     });
     setIsDialogOpen(true);
   };
@@ -356,6 +366,31 @@ export default function StylistsManagement() {
                 </div>
                 
                 <div>
+                  <Label htmlFor="stylist-user">Usuario con Acceso al Sistema (Opcional)</Label>
+                  <Select
+                    value={formData.userId || "none"}
+                    onValueChange={(value) => setFormData({ ...formData, userId: value === "none" ? null : value })}
+                  >
+                    <SelectTrigger id="stylist-user" data-testid="select-stylist-user">
+                      <SelectValue placeholder="Sin acceso al sistema" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Sin acceso al sistema</SelectItem>
+                      {salonUsers.map(({ user }) => (
+                        <SelectItem key={user.id} value={user.id}>
+                          {user.firstName && user.lastName 
+                            ? `${user.firstName} ${user.lastName}` 
+                            : user.email}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Vincula este estilista con un usuario para darle acceso al panel de empleados
+                  </p>
+                </div>
+                
+                <div>
                   <Label>Servicios que Ofrece</Label>
                   <p className="text-xs text-muted-foreground mb-3">
                     Selecciona los servicios que este estilista puede realizar
@@ -452,6 +487,12 @@ export default function StylistsManagement() {
                   <Star className="w-4 h-4 fill-primary text-primary" />
                   <span className="text-sm font-medium">{(stylist.rating / 10).toFixed(1)}</span>
                 </div>
+                {stylist.userId && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <UserCircle className="w-4 h-4" />
+                    <span className="text-xs">Acceso al sistema</span>
+                  </div>
+                )}
               </CardDescription>
             </CardHeader>
             <CardContent>

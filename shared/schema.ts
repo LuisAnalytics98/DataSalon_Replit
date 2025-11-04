@@ -65,6 +65,7 @@ export const services = pgTable("services", {
 export const stylists = pgTable("stylists", {
   id: varchar("id").primaryKey(),
   salonId: varchar("salon_id").notNull().references(() => salons.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }), // Link to user account for system access
   name: text("name").notNull(),
   experience: text("experience").notNull(),
   rating: integer("rating").notNull(),

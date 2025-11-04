@@ -192,6 +192,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get users assigned to current salon (for linking to stylists)
+  app.get("/api/admin/users", isAuthenticated, requireSalonMembership, async (req, res) => {
+    try {
+      const salonUsers = await storage.getSalonUsers(req.salon!.id);
+      res.json(salonUsers);
+    } catch (error) {
+      console.error("Error fetching salon users:", error);
+      res.status(500).json({ error: "Failed to fetch salon users" });
+    }
+  });
+
   // Get all bookings for user's salon
   app.get("/api/admin/bookings", isAuthenticated, requireSalonMembership, async (req, res) => {
     try {
