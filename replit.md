@@ -18,6 +18,14 @@ This is a Spanish-language premium multi-tenant salon booking application that a
 
 ## Recent Changes
 
+**November 4, 2025 - Stylist-to-User Linking Feature:**
+- Added `userId` field to `stylists` table (nullable foreign key to `users.id`)
+- Created `GET /api/admin/users` endpoint to fetch salon users for dropdown selection
+- Updated StylistsManagement component with user selection dropdown in create/edit forms
+- Added "Acceso al sistema" badge to stylist cards when linked to a user account
+- Enables salon admins to link stylist profiles (service providers) to user accounts (system access)
+- End-to-end tested: create stylist with user link, edit to remove link, verify badge behavior
+
 **November 4, 2025 - Dynamic Salon Routing Implementation:**
 - Added `/book/:salonSlug` route for unique salon booking URLs
 - Home component now reads salon slug from URL parameters with fallback to "demo-salon"
@@ -104,6 +112,7 @@ Multi-tenant API architecture with clear separation between public and protected
 - `PATCH /api/admin/stylists/:id` - Update stylist
 - `DELETE /api/admin/stylists/:id` - Delete stylist
 - `POST /api/admin/stylists/:id/availability` - Update stylist availability
+- `GET /api/admin/users` - List users assigned to salon (for stylist-user linking)
 - `GET /api/admin/bookings` - List bookings (scoped to user's salon)
 - `PATCH /api/admin/bookings/:id/status` - Update booking status
 
@@ -152,6 +161,7 @@ Multi-tenant API architecture with clear separation between public and protected
 - `clients` - Customer information (name, email, phone, notes) - scoped to salon
 - `services` - Salon services with pricing and duration - scoped to salon via `salonId`
 - `stylists` - Staff profiles with specialties and ratings - scoped to salon via `salonId`
+  - Includes optional `userId` field to link stylist profiles to user accounts for system access
 - `stylist_availability` - Weekly schedules - linked to stylists
 - `bookings` - Appointment records - scoped to salon via `salonId`
 
