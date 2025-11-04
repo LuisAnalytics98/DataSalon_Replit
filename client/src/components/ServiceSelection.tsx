@@ -44,11 +44,13 @@ const services: Service[] = [
 ];
 
 interface ServiceSelectionProps {
+  services: Service[];
   onContinue: (serviceId: string) => void;
   initialService?: string;
+  isLoading?: boolean;
 }
 
-export default function ServiceSelection({ onContinue, initialService }: ServiceSelectionProps) {
+export default function ServiceSelection({ services, onContinue, initialService, isLoading = false }: ServiceSelectionProps) {
   const [selectedService, setSelectedService] = useState<string | null>(initialService || null);
 
   const handleContinue = () => {

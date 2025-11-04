@@ -13,6 +13,7 @@ interface BookingConfirmationProps {
   date: Date;
   time: string;
   onNewBooking: () => void;
+  isLoading?: boolean;
 }
 
 export default function BookingConfirmation({
@@ -23,6 +24,7 @@ export default function BookingConfirmation({
   date,
   time,
   onNewBooking,
+  isLoading = false,
 }: BookingConfirmationProps) {
   const formatDate = (date: Date) => {
     return date.toLocaleDateString("es-ES", {

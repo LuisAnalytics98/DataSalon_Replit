@@ -45,11 +45,13 @@ const stylists: Stylist[] = [
 ];
 
 interface StylistSelectionProps {
+  stylists: Stylist[];
   onContinue: (stylistId: string) => void;
   initialStylist?: string;
+  isLoading?: boolean;
 }
 
-export default function StylistSelection({ onContinue, initialStylist }: StylistSelectionProps) {
+export default function StylistSelection({ stylists, onContinue, initialStylist, isLoading = false }: StylistSelectionProps) {
   const [selectedStylist, setSelectedStylist] = useState<string | null>(initialStylist || null);
 
   const handleContinue = () => {

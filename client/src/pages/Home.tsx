@@ -1,10 +1,13 @@
 import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import ProgressStepper from "@/components/ProgressStepper";
 import ClientInfoForm, { ClientInfo } from "@/components/ClientInfoForm";
 import ServiceSelection from "@/components/ServiceSelection";
 import StylistSelection from "@/components/StylistSelection";
 import DateTimeSelection from "@/components/DateTimeSelection";
 import BookingConfirmation from "@/components/BookingConfirmation";
+import type { Service, Stylist, BookingWithDetails } from "@shared/schema";
 import haircutImage from "@assets/generated_images/Haircut_service_image_c010f519.png";
 import manicureImage from "@assets/generated_images/Manicure_service_image_c9507d7a.png";
 import pedicureImage from "@assets/generated_images/Pedicure_service_image_68db06c2.png";
@@ -12,59 +15,17 @@ import sarahImage from "@assets/generated_images/Stylist_profile_Sarah_4931a600.
 import michaelImage from "@assets/generated_images/Stylist_profile_Michael_18134496.png";
 import emmaImage from "@assets/generated_images/Stylist_profile_Emma_62c236b6.png";
 
-const services = [
-  {
-    id: "haircut",
-    name: "Corte de Cabello",
-    description: "Corte de cabello profesional y peinado adaptado a tus preferencias",
-    duration: "60 min",
-    price: 65,
-    image: haircutImage,
-  },
-  {
-    id: "manicure",
-    name: "Manicura",
-    description: "Cuidado completo de uñas con limado, pulido y esmaltado",
-    duration: "45 min",
-    price: 45,
-    image: manicureImage,
-  },
-  {
-    id: "pedicure",
-    name: "Pedicura",
-    description: "Tratamiento relajante para pies con exfoliación y cuidado de uñas",
-    duration: "60 min",
-    price: 55,
-    image: pedicureImage,
-  },
-];
+const serviceImages: Record<string, string> = {
+  haircut: haircutImage,
+  manicure: manicureImage,
+  pedicure: pedicureImage,
+};
 
-const stylists = [
-  {
-    id: "sarah",
-    name: "Sarah Johnson",
-    specialties: ["Corte", "Color", "Peinado"],
-    experience: "8 años",
-    rating: 4.9,
-    image: sarahImage,
-  },
-  {
-    id: "michael",
-    name: "Michael Chen",
-    specialties: ["Corte", "Recorte de Barba", "Peinado"],
-    experience: "6 años",
-    rating: 4.8,
-    image: michaelImage,
-  },
-  {
-    id: "emma",
-    name: "Emma Davis",
-    specialties: ["Manicura", "Pedicura", "Arte de Uñas"],
-    experience: "5 años",
-    rating: 5.0,
-    image: emmaImage,
-  },
-];
+const stylistImages: Record<string, string> = {
+  sarah: sarahImage,
+  michael: michaelImage,
+  emma: emmaImage,
+};
 
 const steps = [
   { id: 1, label: "Info Cliente" },
@@ -83,6 +44,35 @@ export default function Home() {
     date?: Date;
     time?: string;
   }>({});
+  const [confirmedBooking, setConfirmedBooking] = useState<BookingWithDetails | null>(null);
+
+  // Fetch services from backend
+  const { data: services = [], isLoading: servicesLoading } = useQuery<Service[]>({
+    queryKey: ["/api/services"],
+  });
+
+  // Fetch stylists from backend
+  const { data: stylists = [], isLoading: stylistsLoading } = useQuery<Stylist[]>({
+    queryKey: ["/api/stylists"],
+  });
+
+  // Create booking mutation
+  const createBookingMutation = useMutation({
+    mutationFn: async (data: {
+      clientInfo: ClientInfo;
+      serviceId: string;
+      stylistId: string;
+      date: Date;
+      time: string;
+    }) => {
+      const response = await apiRequest("POST", "/api/bookings", data);
+      return await response.json() as BookingWithDetails;
+    },
+    onSuccess: (data) => {
+      setConfirmedBooking(data);
+      queryClient.invalidateQueries({ queryKey: ["/api/bookings"] });
+    },
+  });
 
   const handleClientInfoSubmit = (data: ClientInfo) => {
     setBookingData({ ...bookingData, clientInfo: data });
@@ -100,12 +90,26 @@ export default function Home() {
   };
 
   const handleDateTimeSelect = (date: Date, time: string) => {
-    setBookingData({ ...bookingData, date, time });
+    const updatedBookingData = { ...bookingData, date, time };
+    setBookingData(updatedBookingData);
+
+    // Submit booking to backend
+    if (updatedBookingData.clientInfo && updatedBookingData.serviceId && updatedBookingData.stylistId) {
+      createBookingMutation.mutate({
+        clientInfo: updatedBookingData.clientInfo,
+        serviceId: updatedBookingData.serviceId,
+        stylistId: updatedBookingData.stylistId,
+        date,
+        time,
+      });
+    }
+
     setCurrentStep(5);
   };
 
   const handleNewBooking = () => {
     setBookingData({});
+    setConfirmedBooking(null);
     setCurrentStep(1);
   };
 
@@ -117,6 +121,18 @@ export default function Home() {
 
   const selectedService = services.find(s => s.id === bookingData.serviceId);
   const selectedStylist = stylists.find(s => s.id === bookingData.stylistId);
+
+  // Add images to services and stylists
+  const servicesWithImages = services.map(service => ({
+    ...service,
+    image: serviceImages[service.id] || haircutImage,
+  }));
+
+  const stylistsWithImages = stylists.map(stylist => ({
+    ...stylist,
+    image: stylistImages[stylist.id] || sarahImage,
+    rating: stylist.rating / 10, // Convert from 0-50 to 0-5
+  }));
 
   return (
     <div className="min-h-screen bg-background">
@@ -138,15 +154,19 @@ export default function Home() {
 
         {currentStep === 2 && (
           <ServiceSelection
+            services={servicesWithImages}
             onContinue={handleServiceSelect}
             initialService={bookingData.serviceId}
+            isLoading={servicesLoading}
           />
         )}
 
         {currentStep === 3 && (
           <StylistSelection
+            stylists={stylistsWithImages}
             onContinue={handleStylistSelect}
             initialStylist={bookingData.stylistId}
+            isLoading={stylistsLoading}
           />
         )}
 
@@ -158,15 +178,35 @@ export default function Home() {
           />
         )}
 
-        {currentStep === 5 && bookingData.clientInfo && selectedService && bookingData.date && bookingData.time && (
+        {currentStep === 5 && confirmedBooking && (
           <BookingConfirmation
-            bookingId={`BK-${new Date().getFullYear()}-${Math.floor(Math.random() * 100000).toString().padStart(6, '0')}`}
-            clientInfo={bookingData.clientInfo}
-            service={selectedService}
-            stylist={selectedStylist || null}
-            date={bookingData.date}
-            time={bookingData.time}
+            bookingId={confirmedBooking.bookingReference}
+            clientInfo={{
+              name: confirmedBooking.client.name,
+              email: confirmedBooking.client.email,
+              phone: confirmedBooking.client.phone,
+              notes: confirmedBooking.client.notes || undefined,
+            }}
+            service={{
+              id: confirmedBooking.service.id,
+              name: confirmedBooking.service.name,
+              description: confirmedBooking.service.description,
+              duration: confirmedBooking.service.duration,
+              price: confirmedBooking.service.price,
+              image: serviceImages[confirmedBooking.service.id] || haircutImage,
+            }}
+            stylist={confirmedBooking.stylist ? {
+              id: confirmedBooking.stylist.id,
+              name: confirmedBooking.stylist.name,
+              specialties: confirmedBooking.stylist.specialties,
+              experience: confirmedBooking.stylist.experience,
+              rating: confirmedBooking.stylist.rating / 10,
+              image: stylistImages[confirmedBooking.stylist.id] || sarahImage,
+            } : null}
+            date={new Date(confirmedBooking.appointmentDate)}
+            time={confirmedBooking.appointmentTime}
             onNewBooking={handleNewBooking}
+            isLoading={createBookingMutation.isPending}
           />
         )}
       </div>
