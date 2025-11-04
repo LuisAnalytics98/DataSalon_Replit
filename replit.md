@@ -18,6 +18,14 @@ This is a Spanish-language premium multi-tenant salon booking application that a
 
 ## Recent Changes
 
+**November 4, 2025 - Multi-Currency Pricing:**
+- Added `currency` field to services table (supports "dolares" and "colones")
+- Admin panel now includes currency selector dropdown when creating/editing services
+- Updated all price displays to show "Precio aproximado" instead of just price
+- Currency symbols dynamically display: $ for dollars, ₡ for colones
+- Updated components: ServicesManagement, ServiceSelection, BookingConfirmation
+- End-to-end tested: currency selection in admin, price display with symbols on booking pages
+
 **November 4, 2025 - Image Upload and Booking Conflict Prevention:**
 - Integrated Replit Object Storage for service and stylist images
 - Added `imageUrl` field to `services` and `stylists` tables
@@ -178,6 +186,7 @@ Multi-tenant API architecture with clear separation between public and protected
 *Salon-Scoped Data:*
 - `clients` - Customer information (name, email, phone, notes) - scoped to salon
 - `services` - Salon services with pricing and duration - scoped to salon via `salonId`
+  - Includes `currency` field to specify pricing currency ("dolares" or "colones")
   - Includes optional `imageUrl` field for uploaded service images
 - `stylists` - Staff profiles with specialties and ratings - scoped to salon via `salonId`
   - Includes optional `userId` field to link stylist profiles to user accounts for system access
