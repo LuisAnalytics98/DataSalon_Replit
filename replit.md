@@ -46,6 +46,15 @@ Multi-step wizard pattern with five distinct steps:
 4. Date and time selection with calendar interface
 5. Booking confirmation with reference number
 
+**Employee Panel:**
+- Accessible at `/employee` route (not linked in main navigation)
+- Dynamic calendar view for tracking appointments using react-big-calendar
+- Filter appointments by individual stylist or view all stylists
+- Multiple calendar view options: Month, Week, Day, and Agenda
+- Spanish localization for all calendar labels and controls
+- Color-coded appointments by status (pending, for today, in progress, done, cancelled)
+- Displays service name and client name on each calendar event
+
 ### Backend Architecture
 
 **Server Framework:**
@@ -110,6 +119,7 @@ Multi-step wizard pattern with five distinct steps:
 
 **Date Handling:**
 - date-fns - Modern date utility library for formatting and manipulation
+- react-big-calendar - Google Calendar-style event calendar with multiple view options (month, week, day, agenda)
 
 **Database & ORM:**
 - Drizzle ORM - Lightweight TypeScript ORM
