@@ -21,24 +21,24 @@ const stylists: Stylist[] = [
   {
     id: "sarah",
     name: "Sarah Johnson",
-    specialties: ["Haircut", "Color", "Styling"],
-    experience: "8 years",
+    specialties: ["Corte", "Color", "Peinado"],
+    experience: "8 años",
     rating: 4.9,
     image: sarahImage,
   },
   {
     id: "michael",
     name: "Michael Chen",
-    specialties: ["Haircut", "Beard Trim", "Styling"],
-    experience: "6 years",
+    specialties: ["Corte", "Recorte de Barba", "Peinado"],
+    experience: "6 años",
     rating: 4.8,
     image: michaelImage,
   },
   {
     id: "emma",
     name: "Emma Davis",
-    specialties: ["Manicure", "Pedicure", "Nail Art"],
-    experience: "5 years",
+    specialties: ["Manicura", "Pedicura", "Arte de Uñas"],
+    experience: "5 años",
     rating: 5.0,
     image: emmaImage,
   },
@@ -63,10 +63,10 @@ export default function StylistSelection({ onContinue, initialStylist }: Stylist
       <div className="max-w-6xl mx-auto">
         <div className="mb-12 text-center">
           <h2 className="font-serif text-4xl sm:text-5xl font-semibold text-foreground mb-3">
-            Choose Your Stylist
+            Elige tu Estilista
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Select your preferred stylist or choose any available
+            Selecciona tu estilista preferido o elige cualquiera disponible
           </p>
         </div>
 
@@ -83,12 +83,12 @@ export default function StylistSelection({ onContinue, initialStylist }: Stylist
               <Sparkles className="w-12 h-12 text-accent-foreground" />
             </div>
             <h3 className="font-serif text-2xl font-semibold text-foreground mb-2">
-              Any Available Stylist
+              Cualquier Estilista Disponible
             </h3>
             <p className="text-sm text-muted-foreground">
-              Get the first available appointment slot
+              Obtén el primer horario disponible
             </p>
-            <Badge className="mt-4" variant="secondary">First Available</Badge>
+            <Badge className="mt-4" variant="secondary">Primero Disponible</Badge>
           </Card>
 
           {stylists.map((stylist) => {
@@ -122,7 +122,7 @@ export default function StylistSelection({ onContinue, initialStylist }: Stylist
                       <Star className="w-4 h-4 fill-primary text-primary" />
                       <span className="text-sm font-semibold text-foreground">{stylist.rating}</span>
                       <span className="text-sm text-muted-foreground ml-1">
-                        • {stylist.experience} experience
+                        • {stylist.experience} de experiencia
                       </span>
                     </div>
                     
@@ -148,7 +148,7 @@ export default function StylistSelection({ onContinue, initialStylist }: Stylist
             className="px-12"
             data-testid="button-continue-stylist"
           >
-            Continue to Date & Time
+            Continuar a Fecha y Hora
           </Button>
         </div>
       </div>

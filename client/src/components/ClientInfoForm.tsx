@@ -15,9 +15,9 @@ import { Textarea } from "@/components/ui/textarea";
 import salonHeroImage from "@assets/generated_images/Salon_interior_hero_image_fa71b9a1.png";
 
 const clientInfoSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.string().email("Please enter a valid email address"),
-  phone: z.string().min(10, "Please enter a valid phone number"),
+  name: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
+  email: z.string().email("Por favor ingresa un correo electrónico válido"),
+  phone: z.string().min(10, "Por favor ingresa un número de teléfono válido"),
   notes: z.string().optional(),
 });
 
@@ -51,10 +51,10 @@ export default function ClientInfoForm({ onSubmit, initialData }: ClientInfoForm
         <div className="absolute inset-0 flex items-center justify-center text-center px-4">
           <div>
             <h1 className="font-serif text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-3">
-              Welcome to Our Salon
+              Bienvenido a Nuestro Salón
             </h1>
             <p className="text-lg sm:text-xl text-white/90 max-w-2xl mx-auto">
-              Let's get started with your booking
+              Comencemos con tu reserva
             </p>
           </div>
         </div>
@@ -63,10 +63,10 @@ export default function ClientInfoForm({ onSubmit, initialData }: ClientInfoForm
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-12">
         <div className="mb-8">
           <h2 className="font-serif text-3xl sm:text-4xl font-semibold text-foreground mb-2">
-            Tell us about yourself
+            Cuéntanos sobre ti
           </h2>
           <p className="text-muted-foreground text-base">
-            We'll use this information to confirm your appointment
+            Usaremos esta información para confirmar tu cita
           </p>
         </div>
 
@@ -77,10 +77,10 @@ export default function ClientInfoForm({ onSubmit, initialData }: ClientInfoForm
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm font-medium">Full Name</FormLabel>
+                  <FormLabel className="text-sm font-medium">Nombre Completo</FormLabel>
                   <FormControl>
                     <Input 
-                      placeholder="Enter your full name" 
+                      placeholder="Ingresa tu nombre completo" 
                       {...field} 
                       data-testid="input-name"
                       className="py-3"
@@ -96,11 +96,11 @@ export default function ClientInfoForm({ onSubmit, initialData }: ClientInfoForm
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm font-medium">Email Address</FormLabel>
+                  <FormLabel className="text-sm font-medium">Correo Electrónico</FormLabel>
                   <FormControl>
                     <Input 
                       type="email"
-                      placeholder="your.email@example.com" 
+                      placeholder="tu.correo@ejemplo.com" 
                       {...field} 
                       data-testid="input-email"
                       className="py-3"
@@ -116,7 +116,7 @@ export default function ClientInfoForm({ onSubmit, initialData }: ClientInfoForm
               name="phone"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm font-medium">Phone Number</FormLabel>
+                  <FormLabel className="text-sm font-medium">Número de Teléfono</FormLabel>
                   <FormControl>
                     <Input 
                       type="tel"
@@ -136,10 +136,10 @@ export default function ClientInfoForm({ onSubmit, initialData }: ClientInfoForm
               name="notes"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm font-medium">Additional Information (Optional)</FormLabel>
+                  <FormLabel className="text-sm font-medium">Información Adicional (Opcional)</FormLabel>
                   <FormControl>
                     <Textarea 
-                      placeholder="Any allergies, preferences, or special requests..."
+                      placeholder="Alergias, preferencias o solicitudes especiales..."
                       rows={4}
                       {...field} 
                       data-testid="input-notes"
@@ -157,7 +157,7 @@ export default function ClientInfoForm({ onSubmit, initialData }: ClientInfoForm
                 className="px-12"
                 data-testid="button-continue"
               >
-                Continue to Services
+                Continuar a Servicios
               </Button>
             </div>
           </form>

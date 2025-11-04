@@ -19,24 +19,24 @@ export interface Service {
 const services: Service[] = [
   {
     id: "haircut",
-    name: "Haircut",
-    description: "Professional haircut and styling tailored to your preferences",
+    name: "Corte de Cabello",
+    description: "Corte de cabello profesional y peinado adaptado a tus preferencias",
     duration: "60 min",
     price: 65,
     image: haircutImage,
   },
   {
     id: "manicure",
-    name: "Manicure",
-    description: "Complete nail care with shaping, buffing, and polish",
+    name: "Manicura",
+    description: "Cuidado completo de uñas con limado, pulido y esmaltado",
     duration: "45 min",
     price: 45,
     image: manicureImage,
   },
   {
     id: "pedicure",
-    name: "Pedicure",
-    description: "Relaxing foot treatment with exfoliation and nail care",
+    name: "Pedicura",
+    description: "Tratamiento relajante para pies con exfoliación y cuidado de uñas",
     duration: "60 min",
     price: 55,
     image: pedicureImage,
@@ -62,10 +62,10 @@ export default function ServiceSelection({ onContinue, initialService }: Service
       <div className="max-w-6xl mx-auto">
         <div className="mb-12 text-center">
           <h2 className="font-serif text-4xl sm:text-5xl font-semibold text-foreground mb-3">
-            Choose Your Service
+            Elige tu Servicio
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Select the service you'd like to book today
+            Selecciona el servicio que deseas reservar hoy
           </p>
         </div>
 
@@ -127,7 +127,7 @@ export default function ServiceSelection({ onContinue, initialService }: Service
             className="px-12"
             data-testid="button-continue-service"
           >
-            Continue to Stylist Selection
+            Continuar a Selección de Estilista
           </Button>
         </div>
       </div>

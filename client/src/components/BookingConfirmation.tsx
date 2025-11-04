@@ -25,7 +25,7 @@ export default function BookingConfirmation({
   onNewBooking,
 }: BookingConfirmationProps) {
   const formatDate = (date: Date) => {
-    return date.toLocaleDateString("en-US", {
+    return date.toLocaleDateString("es-ES", {
       weekday: "long",
       year: "numeric",
       month: "long",
@@ -41,19 +41,19 @@ export default function BookingConfirmation({
             <CheckCircle2 className="w-12 h-12 text-primary" />
           </div>
           <h1 className="font-serif text-4xl sm:text-5xl font-bold text-foreground mb-3">
-            Booking Confirmed!
+            ¡Reserva Confirmada!
           </h1>
           <p className="text-lg text-muted-foreground">
-            We're looking forward to seeing you
+            Esperamos verte pronto
           </p>
           <p className="text-sm text-muted-foreground mt-2">
-            Booking Reference: <span className="font-semibold text-foreground">{bookingId}</span>
+            Referencia de Reserva: <span className="font-semibold text-foreground">{bookingId}</span>
           </p>
         </div>
 
         <Card className="p-8 mb-6">
           <h2 className="font-serif text-2xl font-semibold text-foreground mb-6 pb-4 border-b">
-            Appointment Details
+            Detalles de la Cita
           </h2>
 
           <div className="space-y-6">
@@ -62,7 +62,7 @@ export default function BookingConfirmation({
                 <Calendar className="w-5 h-5 text-accent-foreground" />
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground mb-1">Date & Time</p>
+                <p className="text-sm font-medium text-muted-foreground mb-1">Fecha y Hora</p>
                 <p className="text-lg font-semibold text-foreground">{formatDate(date)}</p>
                 <p className="text-base text-foreground">{time}</p>
               </div>
@@ -73,7 +73,7 @@ export default function BookingConfirmation({
                 <Scissors className="w-5 h-5 text-accent-foreground" />
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground mb-1">Service</p>
+                <p className="text-sm font-medium text-muted-foreground mb-1">Servicio</p>
                 <p className="text-lg font-semibold text-foreground">{service.name}</p>
                 <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
                   <div className="flex items-center gap-1">
@@ -96,9 +96,9 @@ export default function BookingConfirmation({
                   />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground mb-1">Stylist</p>
+                  <p className="text-sm font-medium text-muted-foreground mb-1">Estilista</p>
                   <p className="text-lg font-semibold text-foreground">{stylist.name}</p>
-                  <p className="text-sm text-muted-foreground">{stylist.experience} experience</p>
+                  <p className="text-sm text-muted-foreground">{stylist.experience} de experiencia</p>
                 </div>
               </div>
             )}
@@ -107,7 +107,7 @@ export default function BookingConfirmation({
 
         <Card className="p-8 mb-8">
           <h2 className="font-serif text-2xl font-semibold text-foreground mb-6 pb-4 border-b">
-            Client Information
+            Información del Cliente
           </h2>
 
           <div className="space-y-4">
@@ -116,7 +116,7 @@ export default function BookingConfirmation({
                 <User className="w-5 h-5 text-accent-foreground" />
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground mb-1">Name</p>
+                <p className="text-sm font-medium text-muted-foreground mb-1">Nombre</p>
                 <p className="text-base text-foreground">{clientInfo.name}</p>
               </div>
             </div>
@@ -126,7 +126,7 @@ export default function BookingConfirmation({
                 <Mail className="w-5 h-5 text-accent-foreground" />
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground mb-1">Email</p>
+                <p className="text-sm font-medium text-muted-foreground mb-1">Correo</p>
                 <p className="text-base text-foreground">{clientInfo.email}</p>
               </div>
             </div>
@@ -136,14 +136,14 @@ export default function BookingConfirmation({
                 <Phone className="w-5 h-5 text-accent-foreground" />
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground mb-1">Phone</p>
+                <p className="text-sm font-medium text-muted-foreground mb-1">Teléfono</p>
                 <p className="text-base text-foreground">{clientInfo.phone}</p>
               </div>
             </div>
 
             {clientInfo.notes && (
               <div className="pt-4 border-t">
-                <p className="text-sm font-medium text-muted-foreground mb-2">Additional Notes</p>
+                <p className="text-sm font-medium text-muted-foreground mb-2">Notas Adicionales</p>
                 <p className="text-base text-foreground">{clientInfo.notes}</p>
               </div>
             )}
@@ -158,7 +158,7 @@ export default function BookingConfirmation({
             onClick={() => window.print()}
             data-testid="button-print"
           >
-            Print Confirmation
+            Imprimir Confirmación
           </Button>
           <Button
             size="lg"
@@ -166,7 +166,7 @@ export default function BookingConfirmation({
             onClick={onNewBooking}
             data-testid="button-new-booking"
           >
-            Book Another Appointment
+            Reservar Otra Cita
           </Button>
         </div>
       </div>

@@ -15,24 +15,24 @@ import emmaImage from "@assets/generated_images/Stylist_profile_Emma_62c236b6.pn
 const services = [
   {
     id: "haircut",
-    name: "Haircut",
-    description: "Professional haircut and styling tailored to your preferences",
+    name: "Corte de Cabello",
+    description: "Corte de cabello profesional y peinado adaptado a tus preferencias",
     duration: "60 min",
     price: 65,
     image: haircutImage,
   },
   {
     id: "manicure",
-    name: "Manicure",
-    description: "Complete nail care with shaping, buffing, and polish",
+    name: "Manicura",
+    description: "Cuidado completo de uñas con limado, pulido y esmaltado",
     duration: "45 min",
     price: 45,
     image: manicureImage,
   },
   {
     id: "pedicure",
-    name: "Pedicure",
-    description: "Relaxing foot treatment with exfoliation and nail care",
+    name: "Pedicura",
+    description: "Tratamiento relajante para pies con exfoliación y cuidado de uñas",
     duration: "60 min",
     price: 55,
     image: pedicureImage,
@@ -43,35 +43,35 @@ const stylists = [
   {
     id: "sarah",
     name: "Sarah Johnson",
-    specialties: ["Haircut", "Color", "Styling"],
-    experience: "8 years",
+    specialties: ["Corte", "Color", "Peinado"],
+    experience: "8 años",
     rating: 4.9,
     image: sarahImage,
   },
   {
     id: "michael",
     name: "Michael Chen",
-    specialties: ["Haircut", "Beard Trim", "Styling"],
-    experience: "6 years",
+    specialties: ["Corte", "Recorte de Barba", "Peinado"],
+    experience: "6 años",
     rating: 4.8,
     image: michaelImage,
   },
   {
     id: "emma",
     name: "Emma Davis",
-    specialties: ["Manicure", "Pedicure", "Nail Art"],
-    experience: "5 years",
+    specialties: ["Manicura", "Pedicura", "Arte de Uñas"],
+    experience: "5 años",
     rating: 5.0,
     image: emmaImage,
   },
 ];
 
 const steps = [
-  { id: 1, label: "Client Info" },
-  { id: 2, label: "Service" },
-  { id: 3, label: "Stylist" },
-  { id: 4, label: "Date & Time" },
-  { id: 5, label: "Confirm" }
+  { id: 1, label: "Info Cliente" },
+  { id: 2, label: "Servicio" },
+  { id: 3, label: "Estilista" },
+  { id: 4, label: "Fecha y Hora" },
+  { id: 5, label: "Confirmar" }
 ];
 
 export default function Home() {

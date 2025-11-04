@@ -58,7 +58,7 @@ export default function ProgressStepper({ steps, currentStep, onStepClick }: Pro
         </div>
         <div className="sm:hidden text-center mt-3">
           <span className="text-sm font-medium text-muted-foreground">
-            Step {currentStep} of {steps.length}
+            Paso {currentStep} de {steps.length}
           </span>
         </div>
       </div>

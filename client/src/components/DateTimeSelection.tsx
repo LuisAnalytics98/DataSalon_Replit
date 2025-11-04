@@ -40,8 +40,8 @@ export default function DateTimeSelection({ onContinue, initialDate, initialTime
   };
 
   const days = getDaysInMonth(currentMonth);
-  const monthNames = ["January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"];
+  const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
   const handlePrevMonth = () => {
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1));
@@ -73,10 +73,10 @@ export default function DateTimeSelection({ onContinue, initialDate, initialTime
       <div className="max-w-6xl mx-auto">
         <div className="mb-12 text-center">
           <h2 className="font-serif text-4xl sm:text-5xl font-semibold text-foreground mb-3">
-            Select Date & Time
+            Selecciona Fecha y Hora
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Choose your preferred appointment date and time
+            Elige la fecha y hora preferidas para tu cita
           </p>
         </div>
 
@@ -107,7 +107,7 @@ export default function DateTimeSelection({ onContinue, initialDate, initialTime
             </div>
 
             <div className="grid grid-cols-7 gap-2 mb-2">
-              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+              {["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"].map((day) => (
                 <div key={day} className="text-center text-xs font-medium text-muted-foreground py-2">
                   {day}
                 </div>
@@ -138,12 +138,12 @@ export default function DateTimeSelection({ onContinue, initialDate, initialTime
 
           <Card className="p-6">
             <h3 className="font-serif text-2xl font-semibold text-foreground mb-6">
-              Available Times
+              Horarios Disponibles
             </h3>
             
             {!selectedDate ? (
               <div className="text-center py-12 text-muted-foreground">
-                Please select a date first
+                Por favor selecciona una fecha primero
               </div>
             ) : (
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 max-h-96 overflow-y-auto">
@@ -175,7 +175,7 @@ export default function DateTimeSelection({ onContinue, initialDate, initialTime
             className="px-12"
             data-testid="button-continue-datetime"
           >
-            Continue to Confirmation
+            Continuar a Confirmación
           </Button>
         </div>
       </div>
