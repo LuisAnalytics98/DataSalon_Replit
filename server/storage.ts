@@ -11,40 +11,62 @@ import {
   type StylistAvailability,
   type InsertStylistAvailability,
   type UpdateBookingStatus,
+  type User,
+  type UpsertUser,
+  type Salon,
+  type InsertSalon,
+  type SalonUser,
+  type InsertSalonUser,
+  type UserWithSalon,
   clients,
   bookings,
   services,
   stylists,
   stylistAvailability,
+  users,
+  salons,
+  salonUsers,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and } from "drizzle-orm";
 
 export interface IStorage {
+  // Users (required for Replit Auth)
+  getUser(id: string): Promise<User | undefined>;
+  upsertUser(user: UpsertUser): Promise<User>;
+  getUserWithSalon(userId: string): Promise<UserWithSalon | undefined>;
+  
+  // Salons
+  getSalonById(id: string): Promise<Salon | undefined>;
+  getSalonBySlug(slug: string): Promise<Salon | undefined>;
+  createSalon(salon: InsertSalon): Promise<Salon>;
+  
+  // Salon Users
+  createSalonUser(salonUser: InsertSalonUser): Promise<SalonUser>;
+  getUserSalons(userId: string): Promise<SalonUser[]>;
+  
   // Clients
   createClient(client: InsertClient): Promise<Client>;
   getClientById(id: string): Promise<Client | undefined>;
   
-  // Services
-  getAllServices(): Promise<Service[]>;
+  // Services (now salon-scoped)
+  getServicesBySalon(salonId: string): Promise<Service[]>;
   getServiceById(id: string): Promise<Service | undefined>;
   createService(service: InsertService): Promise<Service>;
   updateService(id: string, service: Partial<InsertService>): Promise<Service | undefined>;
   deleteService(id: string): Promise<boolean>;
-  seedServices(): Promise<void>;
   
-  // Stylists
-  getAllStylists(): Promise<Stylist[]>;
+  // Stylists (now salon-scoped)
+  getStylistsBySalon(salonId: string): Promise<Stylist[]>;
   getStylistById(id: string): Promise<Stylist | undefined>;
   createStylist(stylist: InsertStylist): Promise<Stylist>;
   updateStylist(id: string, stylist: Partial<InsertStylist>): Promise<Stylist | undefined>;
   deleteStylist(id: string): Promise<boolean>;
-  seedStylists(): Promise<void>;
   
-  // Bookings
-  createBooking(booking: InsertBooking): Promise<Booking>;
+  // Bookings (now salon-scoped)
+  createBooking(booking: InsertBooking, salonId: string): Promise<Booking>;
   getBookingById(id: string): Promise<BookingWithDetails | undefined>;
-  getAllBookings(): Promise<BookingWithDetails[]>;
+  getBookingsBySalon(salonId: string): Promise<BookingWithDetails[]>;
   updateBookingStatus(data: UpdateBookingStatus): Promise<Booking | undefined>;
   
   // Stylist Availability
@@ -56,6 +78,77 @@ export interface IStorage {
 }
 
 export class DbStorage implements IStorage {
+  // Users (required for Replit Auth)
+  async getUser(id: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+
+  async upsertUser(userData: UpsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(userData)
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          ...userData,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return user;
+  }
+
+  async getUserWithSalon(userId: string): Promise<UserWithSalon | undefined> {
+    const result = await db
+      .select({
+        user: users,
+        salon: salons,
+        role: salonUsers.role,
+      })
+      .from(users)
+      .leftJoin(salonUsers, eq(users.id, salonUsers.userId))
+      .leftJoin(salons, eq(salonUsers.salonId, salons.id))
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (!result || result.length === 0 || !result[0].salon) {
+      return undefined;
+    }
+
+    return {
+      ...result[0].user,
+      salon: result[0].salon,
+      role: result[0].role || "employee",
+    };
+  }
+
+  // Salons
+  async getSalonById(id: string): Promise<Salon | undefined> {
+    const [salon] = await db.select().from(salons).where(eq(salons.id, id));
+    return salon;
+  }
+
+  async getSalonBySlug(slug: string): Promise<Salon | undefined> {
+    const [salon] = await db.select().from(salons).where(eq(salons.slug, slug));
+    return salon;
+  }
+
+  async createSalon(insertSalon: InsertSalon): Promise<Salon> {
+    const [salon] = await db.insert(salons).values(insertSalon).returning();
+    return salon;
+  }
+
+  // Salon Users
+  async createSalonUser(insertSalonUser: InsertSalonUser): Promise<SalonUser> {
+    const [salonUser] = await db.insert(salonUsers).values(insertSalonUser).returning();
+    return salonUser;
+  }
+
+  async getUserSalons(userId: string): Promise<SalonUser[]> {
+    return await db.select().from(salonUsers).where(eq(salonUsers.userId, userId));
+  }
+
   // Clients
   async createClient(insertClient: InsertClient): Promise<Client> {
     const [client] = await db.insert(clients).values(insertClient).returning();
@@ -67,9 +160,9 @@ export class DbStorage implements IStorage {
     return client;
   }
 
-  // Services
-  async getAllServices(): Promise<Service[]> {
-    return await db.select().from(services);
+  // Services (now salon-scoped)
+  async getServicesBySalon(salonId: string): Promise<Service[]> {
+    return await db.select().from(services).where(eq(services.salonId, salonId));
   }
 
   async getServiceById(id: string): Promise<Service | undefined> {
@@ -95,38 +188,9 @@ export class DbStorage implements IStorage {
     return result.rowCount !== null && result.rowCount > 0;
   }
 
-  async seedServices(): Promise<void> {
-    const existingServices = await this.getAllServices();
-    if (existingServices.length > 0) return;
-
-    await db.insert(services).values([
-      {
-        id: "haircut",
-        name: "Corte de Cabello",
-        description: "Corte de cabello profesional y peinado adaptado a tus preferencias",
-        duration: "60 min",
-        price: 65,
-      },
-      {
-        id: "manicure",
-        name: "Manicura",
-        description: "Cuidado completo de uñas con limado, pulido y esmaltado",
-        duration: "45 min",
-        price: 45,
-      },
-      {
-        id: "pedicure",
-        name: "Pedicura",
-        description: "Tratamiento relajante para pies con exfoliación y cuidado de uñas",
-        duration: "60 min",
-        price: 55,
-      },
-    ]);
-  }
-
-  // Stylists
-  async getAllStylists(): Promise<Stylist[]> {
-    return await db.select().from(stylists);
+  // Stylists (now salon-scoped)
+  async getStylistsBySalon(salonId: string): Promise<Stylist[]> {
+    return await db.select().from(stylists).where(eq(stylists.salonId, salonId));
   }
 
   async getStylistById(id: string): Promise<Stylist | undefined> {
@@ -152,41 +216,13 @@ export class DbStorage implements IStorage {
     return result.rowCount !== null && result.rowCount > 0;
   }
 
-  async seedStylists(): Promise<void> {
-    const existingStylists = await this.getAllStylists();
-    if (existingStylists.length > 0) return;
-
-    await db.insert(stylists).values([
-      {
-        id: "sarah",
-        name: "Sarah Johnson",
-        specialties: ["Corte", "Color", "Peinado"],
-        experience: "8 años",
-        rating: 49,
-      },
-      {
-        id: "michael",
-        name: "Michael Chen",
-        specialties: ["Corte", "Recorte de Barba", "Peinado"],
-        experience: "6 años",
-        rating: 48,
-      },
-      {
-        id: "emma",
-        name: "Emma Davis",
-        specialties: ["Manicura", "Pedicura", "Arte de Uñas"],
-        experience: "5 años",
-        rating: 50,
-      },
-    ]);
-  }
-
-  // Bookings
-  async createBooking(insertBooking: InsertBooking): Promise<Booking> {
+  // Bookings (now salon-scoped)
+  async createBooking(insertBooking: InsertBooking, salonId: string): Promise<Booking> {
     const bookingReference = `BK-${new Date().getFullYear()}-${Math.floor(Math.random() * 100000).toString().padStart(6, '0')}`;
     
     const [booking] = await db.insert(bookings).values({
       ...insertBooking,
+      salonId,
       bookingReference,
     }).returning();
     
@@ -219,7 +255,7 @@ export class DbStorage implements IStorage {
     };
   }
 
-  async getAllBookings(): Promise<BookingWithDetails[]> {
+  async getBookingsBySalon(salonId: string): Promise<BookingWithDetails[]> {
     const result = await db
       .select({
         booking: bookings,
@@ -230,7 +266,8 @@ export class DbStorage implements IStorage {
       .from(bookings)
       .leftJoin(clients, eq(bookings.clientId, clients.id))
       .leftJoin(services, eq(bookings.serviceId, services.id))
-      .leftJoin(stylists, eq(bookings.stylistId, stylists.id));
+      .leftJoin(stylists, eq(bookings.stylistId, stylists.id))
+      .where(eq(bookings.salonId, salonId));
 
     return result
       .filter((r: any) => r.client && r.service)
