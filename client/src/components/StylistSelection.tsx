@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Star, Sparkles } from "lucide-react";
+import { Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import sarahImage from "@assets/generated_images/Stylist_profile_Sarah_4931a600.png";
 import michaelImage from "@assets/generated_images/Stylist_profile_Michael_18134496.png";
@@ -68,31 +68,11 @@ export default function StylistSelection({ stylists, onContinue, initialStylist,
             Elige tu Estilista
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Selecciona tu estilista preferido o elige cualquiera disponible
+            Selecciona tu estilista preferido
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-          <Card
-            className={cn(
-              "p-8 cursor-pointer transition-all duration-300 hover:shadow-lg flex flex-col items-center text-center",
-              selectedStylist === "any" && "ring-2 ring-primary"
-            )}
-            onClick={() => setSelectedStylist("any")}
-            data-testid="card-stylist-any"
-          >
-            <div className="w-24 h-24 rounded-full bg-accent flex items-center justify-center mb-4">
-              <Sparkles className="w-12 h-12 text-accent-foreground" />
-            </div>
-            <h3 className="font-serif text-2xl font-semibold text-foreground mb-2">
-              Cualquier Estilista Disponible
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              Obtén el primer horario disponible
-            </p>
-            <Badge className="mt-4" variant="secondary">Primero Disponible</Badge>
-          </Card>
-
           {stylists.map((stylist) => {
             const isSelected = selectedStylist === stylist.id;
             

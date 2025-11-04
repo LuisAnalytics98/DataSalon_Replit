@@ -18,6 +18,11 @@ This is a Spanish-language premium multi-tenant salon booking application that a
 
 ## Recent Changes
 
+**November 4, 2025 - Booking Flow Update:**
+- Removed "Cualquier Estilista Disponible" option from stylist selection page
+- Clients must now select a specific stylist to proceed with booking
+- Updated subtitle to "Selecciona tu estilista preferido"
+
 **November 4, 2025 - Stylist-to-User Linking Feature:**
 - Added `userId` field to `stylists` table (nullable foreign key to `users.id`)
 - Created `GET /api/admin/users` endpoint to fetch salon users for dropdown selection
