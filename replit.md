@@ -16,6 +16,17 @@ This is a Spanish-language premium multi-tenant salon booking application that a
 - Whitelist mechanism via `salon_users` table
 - Session-based authentication with PostgreSQL session store
 
+## Recent Changes
+
+**November 4, 2025 - Dynamic Salon Routing Implementation:**
+- Added `/book/:salonSlug` route for unique salon booking URLs
+- Home component now reads salon slug from URL parameters with fallback to "demo-salon"
+- Implemented state reset on salon switch to prevent cross-salon data corruption
+- Root path `/` defaults to demo-salon for backwards compatibility
+- Tested with multiple salons (demo-salon, nail-station)
+- Super-admin panel allows platform owner to create and manage salons via `/superadmin`
+- Super-admin authentication controlled by `SUPER_ADMIN_EMAIL` environment variable
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
