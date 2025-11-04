@@ -10,15 +10,25 @@ import {
   insertStylistSchema,
   insertStylistAvailabilitySchema,
   updateBookingStatusSchema,
+  insertSalonSchema,
+  insertSalonUserSchema,
 } from "@shared/schema";
 import type { Salon } from "@shared/schema";
 
-// Extend Express Request to include salon and user context
+// Extend Express types for authentication and salon context
 declare global {
   namespace Express {
     interface Request {
       salon?: Salon;
       userRole?: "owner" | "admin" | "employee";
+    }
+    interface User {
+      id?: string;
+      email?: string;
+      claims?: any;
+      access_token?: string;
+      refresh_token?: string;
+      expires_at?: number;
     }
   }
 }
@@ -47,17 +57,18 @@ async function resolveSalonSlug(req: Request, res: Response, next: NextFunction)
 // Middleware to check user has access to their salon and attach role
 async function requireSalonMembership(req: Request, res: Response, next: NextFunction) {
   try {
-    if (!req.user?.id) {
+    const userId = req.user?.claims?.sub;
+    if (!userId) {
       return res.status(401).json({ error: "Authentication required" });
     }
 
-    const userWithSalon = await storage.getUserWithSalon(req.user.id);
+    const userWithSalon = await storage.getUserWithSalon(userId);
     if (!userWithSalon || !userWithSalon.salon) {
       return res.status(403).json({ error: "No salon access" });
     }
 
     req.salon = userWithSalon.salon;
-    req.userRole = userWithSalon.role;
+    req.userRole = userWithSalon.role as "owner" | "admin" | "employee";
     next();
   } catch (error) {
     console.error("Error checking salon membership:", error);
@@ -77,7 +88,8 @@ function requireRole(...allowedRoles: Array<"owner" | "admin" | "employee">) {
 
 // Middleware to check if user is super admin
 function requireSuperAdmin(req: Request, res: Response, next: NextFunction) {
-  if (!req.user?.email) {
+  const userEmail = req.user?.claims?.email;
+  if (!userEmail) {
     return res.status(401).json({ error: "Authentication required" });
   }
   
@@ -86,7 +98,7 @@ function requireSuperAdmin(req: Request, res: Response, next: NextFunction) {
     return res.status(500).json({ error: "Super admin not configured" });
   }
   
-  if (req.user.email !== superAdminEmail) {
+  if (userEmail !== superAdminEmail) {
     return res.status(403).json({ error: "Super admin access required" });
   }
   
