@@ -1,6 +1,8 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { setupAuth, isAuthenticated } from "./replitAuth";
+import { seedDemoSalon } from "./seed";
 import { 
   insertClientSchema, 
   insertBookingSchema,
@@ -9,34 +11,101 @@ import {
   insertStylistAvailabilitySchema,
   updateBookingStatusSchema,
 } from "@shared/schema";
+import type { Salon } from "@shared/schema";
+
+// Extend Express Request to include salon and user context
+declare global {
+  namespace Express {
+    interface Request {
+      salon?: Salon;
+      userRole?: "owner" | "admin" | "employee";
+    }
+  }
+}
+
+// Middleware to resolve salon from slug parameter
+async function resolveSalonSlug(req: Request, res: Response, next: NextFunction) {
+  try {
+    const salonSlug = req.params.salonSlug;
+    if (!salonSlug) {
+      return res.status(400).json({ error: "Salon slug is required" });
+    }
+
+    const salon = await storage.getSalonBySlug(salonSlug);
+    if (!salon) {
+      return res.status(404).json({ error: "Salon not found" });
+    }
+
+    req.salon = salon;
+    next();
+  } catch (error) {
+    console.error("Error resolving salon:", error);
+    res.status(500).json({ error: "Failed to resolve salon" });
+  }
+}
+
+// Middleware to check user has access to their salon and attach role
+async function requireSalonMembership(req: Request, res: Response, next: NextFunction) {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+
+    const userWithSalon = await storage.getUserWithSalon(req.user.id);
+    if (!userWithSalon || !userWithSalon.salon) {
+      return res.status(403).json({ error: "No salon access" });
+    }
+
+    req.salon = userWithSalon.salon;
+    req.userRole = userWithSalon.role;
+    next();
+  } catch (error) {
+    console.error("Error checking salon membership:", error);
+    res.status(500).json({ error: "Failed to verify salon access" });
+  }
+}
+
+// Middleware to require specific roles
+function requireRole(...allowedRoles: Array<"owner" | "admin" | "employee">) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (!req.userRole || !allowedRoles.includes(req.userRole)) {
+      return res.status(403).json({ error: "Insufficient permissions" });
+    }
+    next();
+  };
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Seed initial data
-  await storage.seedServices();
-  await storage.seedStylists();
+  // Setup Replit authentication
+  setupAuth(app);
 
-  // Get all services
-  app.get("/api/services", async (_req, res) => {
+  // Seed demo salon on startup
+  await seedDemoSalon();
+
+  // ===== PUBLIC ROUTES (No auth required, salon-scoped) =====
+  
+  // Get services for a specific salon (public booking flow)
+  app.get("/api/public/:salonSlug/services", resolveSalonSlug, async (req, res) => {
     try {
-      const services = await storage.getAllServices();
+      const services = await storage.getServicesBySalon(req.salon!.id);
       res.json(services);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch services" });
     }
   });
 
-  // Get all stylists
-  app.get("/api/stylists", async (_req, res) => {
+  // Get stylists for a specific salon (public booking flow)
+  app.get("/api/public/:salonSlug/stylists", resolveSalonSlug, async (req, res) => {
     try {
-      const stylists = await storage.getAllStylists();
+      const stylists = await storage.getStylistsBySalon(req.salon!.id);
       res.json(stylists);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch stylists" });
     }
   });
 
-  // Create a booking
-  app.post("/api/bookings", async (req, res) => {
+  // Create a booking for a specific salon (public booking flow)
+  app.post("/api/public/:salonSlug/bookings", resolveSalonSlug, async (req, res) => {
     try {
       const { clientInfo, serviceId, stylistId, date, time } = req.body;
 
@@ -56,7 +125,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         appointmentTime: time,
       });
 
-      const booking = await storage.createBooking(bookingData);
+      const booking = await storage.createBooking(bookingData, req.salon!.id);
       const bookingWithDetails = await storage.getBookingById(booking.id);
 
       res.json(bookingWithDetails);
@@ -66,8 +135,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get a booking by ID
-  app.get("/api/bookings/:id", async (req, res) => {
+  // Get a specific booking by reference (public - for confirmation page)
+  app.get("/api/public/bookings/:id", async (req, res) => {
     try {
       const booking = await storage.getBookingById(req.params.id);
       if (!booking) {
@@ -79,29 +148,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get all bookings
-  app.get("/api/bookings", async (_req, res) => {
+  // ===== ADMIN/EMPLOYEE ROUTES (Auth required, salon-scoped) =====
+
+  // Get salon data for current user
+  app.get("/api/admin/salon", isAuthenticated, requireSalonMembership, async (req, res) => {
     try {
-      const bookings = await storage.getAllBookings();
+      res.json({
+        salon: req.salon,
+        role: req.userRole,
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch salon data" });
+    }
+  });
+
+  // Get all bookings for user's salon
+  app.get("/api/admin/bookings", isAuthenticated, requireSalonMembership, async (req, res) => {
+    try {
+      const bookings = await storage.getBookingsBySalon(req.salon!.id);
       res.json(bookings);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch bookings" });
     }
   });
 
-  // ===== ADMIN ROUTES =====
-
-  // Update booking status
-  app.patch("/api/admin/bookings/:id/status", async (req, res) => {
+  // Update booking status (admin only)
+  app.patch("/api/admin/bookings/:id/status", isAuthenticated, requireSalonMembership, requireRole("owner", "admin"), async (req, res) => {
     try {
       const validatedData = updateBookingStatusSchema.parse({
         id: req.params.id,
         status: req.body.status,
       });
       
-      const booking = await storage.updateBookingStatus(validatedData);
+      const booking = await storage.updateBookingStatus(validatedData, req.salon!.id);
       if (!booking) {
-        return res.status(404).json({ error: "Booking not found" });
+        return res.status(404).json({ error: "Booking not found or access denied" });
       }
       
       res.json(booking);
@@ -111,10 +192,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Service management
-  app.post("/api/admin/services", async (req, res) => {
+  // Get services for user's salon
+  app.get("/api/admin/services", isAuthenticated, requireSalonMembership, async (req, res) => {
     try {
-      const validatedService = insertServiceSchema.parse(req.body);
+      const services = await storage.getServicesBySalon(req.salon!.id);
+      res.json(services);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch services" });
+    }
+  });
+
+  // Service management (admin/owner only)
+  app.post("/api/admin/services", isAuthenticated, requireSalonMembership, requireRole("owner", "admin"), async (req, res) => {
+    try {
+      const validatedService = insertServiceSchema.parse({
+        ...req.body,
+        salonId: req.salon!.id,
+      });
       const service = await storage.createService(validatedService);
       res.json(service);
     } catch (error) {
@@ -123,11 +217,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/admin/services/:id", async (req, res) => {
+  app.patch("/api/admin/services/:id", isAuthenticated, requireSalonMembership, requireRole("owner", "admin"), async (req, res) => {
     try {
-      const service = await storage.updateService(req.params.id, req.body);
+      const service = await storage.updateService(req.params.id, req.salon!.id, req.body);
       if (!service) {
-        return res.status(404).json({ error: "Service not found" });
+        return res.status(404).json({ error: "Service not found or access denied" });
       }
       res.json(service);
     } catch (error) {
@@ -136,11 +230,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/admin/services/:id", async (req, res) => {
+  app.delete("/api/admin/services/:id", isAuthenticated, requireSalonMembership, requireRole("owner", "admin"), async (req, res) => {
     try {
-      const success = await storage.deleteService(req.params.id);
+      const success = await storage.deleteService(req.params.id, req.salon!.id);
       if (!success) {
-        return res.status(404).json({ error: "Service not found" });
+        return res.status(404).json({ error: "Service not found or access denied" });
       }
       res.json({ success: true });
     } catch (error) {
@@ -149,10 +243,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Stylist management
-  app.post("/api/admin/stylists", async (req, res) => {
+  // Get stylists for user's salon
+  app.get("/api/admin/stylists", isAuthenticated, requireSalonMembership, async (req, res) => {
     try {
-      const validatedStylist = insertStylistSchema.parse(req.body);
+      const stylists = await storage.getStylistsBySalon(req.salon!.id);
+      res.json(stylists);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch stylists" });
+    }
+  });
+
+  // Stylist management (admin/owner only)
+  app.post("/api/admin/stylists", isAuthenticated, requireSalonMembership, requireRole("owner", "admin"), async (req, res) => {
+    try {
+      const validatedStylist = insertStylistSchema.parse({
+        ...req.body,
+        salonId: req.salon!.id,
+      });
       const stylist = await storage.createStylist(validatedStylist);
       res.json(stylist);
     } catch (error) {
@@ -161,11 +268,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/admin/stylists/:id", async (req, res) => {
+  app.patch("/api/admin/stylists/:id", isAuthenticated, requireSalonMembership, requireRole("owner", "admin"), async (req, res) => {
     try {
-      const stylist = await storage.updateStylist(req.params.id, req.body);
+      const stylist = await storage.updateStylist(req.params.id, req.salon!.id, req.body);
       if (!stylist) {
-        return res.status(404).json({ error: "Stylist not found" });
+        return res.status(404).json({ error: "Stylist not found or access denied" });
       }
       res.json(stylist);
     } catch (error) {
@@ -174,11 +281,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/admin/stylists/:id", async (req, res) => {
+  app.delete("/api/admin/stylists/:id", isAuthenticated, requireSalonMembership, requireRole("owner", "admin"), async (req, res) => {
     try {
-      const success = await storage.deleteStylist(req.params.id);
+      const success = await storage.deleteStylist(req.params.id, req.salon!.id);
       if (!success) {
-        return res.status(404).json({ error: "Stylist not found" });
+        return res.status(404).json({ error: "Stylist not found or access denied" });
       }
       res.json({ success: true });
     } catch (error) {
@@ -187,8 +294,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Stylist availability management
-  app.get("/api/stylists/:id/availability", async (req, res) => {
+  // Stylist availability management (public read for booking, admin write)
+  app.get("/api/public/stylists/:id/availability", async (req, res) => {
     try {
       const availability = await storage.getStylistAvailability(req.params.id);
       res.json(availability);
@@ -198,7 +305,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/admin/stylists/:id/availability", async (req, res) => {
+  app.post("/api/admin/stylists/:id/availability", isAuthenticated, requireSalonMembership, requireRole("owner", "admin"), async (req, res) => {
     try {
       const { availability } = req.body;
       
@@ -210,7 +317,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
       );
       
-      const result = await storage.setStylistAvailability(req.params.id, validatedAvailability);
+      const result = await storage.setStylistAvailability(req.params.id, req.salon!.id, validatedAvailability);
       res.json(result);
     } catch (error) {
       console.error("Error setting stylist availability:", error);

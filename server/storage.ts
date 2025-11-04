@@ -53,28 +53,28 @@ export interface IStorage {
   getServicesBySalon(salonId: string): Promise<Service[]>;
   getServiceById(id: string): Promise<Service | undefined>;
   createService(service: InsertService): Promise<Service>;
-  updateService(id: string, service: Partial<InsertService>): Promise<Service | undefined>;
-  deleteService(id: string): Promise<boolean>;
+  updateService(id: string, salonId: string, service: Partial<InsertService>): Promise<Service | undefined>;
+  deleteService(id: string, salonId: string): Promise<boolean>;
   
   // Stylists (now salon-scoped)
   getStylistsBySalon(salonId: string): Promise<Stylist[]>;
   getStylistById(id: string): Promise<Stylist | undefined>;
   createStylist(stylist: InsertStylist): Promise<Stylist>;
-  updateStylist(id: string, stylist: Partial<InsertStylist>): Promise<Stylist | undefined>;
-  deleteStylist(id: string): Promise<boolean>;
+  updateStylist(id: string, salonId: string, stylist: Partial<InsertStylist>): Promise<Stylist | undefined>;
+  deleteStylist(id: string, salonId: string): Promise<boolean>;
   
   // Bookings (now salon-scoped)
   createBooking(booking: InsertBooking, salonId: string): Promise<Booking>;
   getBookingById(id: string): Promise<BookingWithDetails | undefined>;
   getBookingsBySalon(salonId: string): Promise<BookingWithDetails[]>;
-  updateBookingStatus(data: UpdateBookingStatus): Promise<Booking | undefined>;
+  updateBookingStatus(data: UpdateBookingStatus, salonId: string): Promise<Booking | undefined>;
   
   // Stylist Availability
   getStylistAvailability(stylistId: string): Promise<StylistAvailability[]>;
   createStylistAvailability(availability: InsertStylistAvailability): Promise<StylistAvailability>;
   updateStylistAvailability(id: number, availability: Partial<InsertStylistAvailability>): Promise<StylistAvailability | undefined>;
   deleteStylistAvailability(id: number): Promise<boolean>;
-  setStylistAvailability(stylistId: string, availability: InsertStylistAvailability[]): Promise<StylistAvailability[]>;
+  setStylistAvailability(stylistId: string, salonId: string, availability: InsertStylistAvailability[]): Promise<StylistAvailability[]>;
 }
 
 export class DbStorage implements IStorage {
@@ -175,16 +175,17 @@ export class DbStorage implements IStorage {
     return service;
   }
 
-  async updateService(id: string, updateData: Partial<InsertService>): Promise<Service | undefined> {
+  async updateService(id: string, salonId: string, updateData: Partial<InsertService>): Promise<Service | undefined> {
     const [service] = await db.update(services)
       .set(updateData)
-      .where(eq(services.id, id))
+      .where(and(eq(services.id, id), eq(services.salonId, salonId)))
       .returning();
     return service;
   }
 
-  async deleteService(id: string): Promise<boolean> {
-    const result = await db.delete(services).where(eq(services.id, id));
+  async deleteService(id: string, salonId: string): Promise<boolean> {
+    const result = await db.delete(services)
+      .where(and(eq(services.id, id), eq(services.salonId, salonId)));
     return result.rowCount !== null && result.rowCount > 0;
   }
 
@@ -203,16 +204,17 @@ export class DbStorage implements IStorage {
     return stylist;
   }
 
-  async updateStylist(id: string, updateData: Partial<InsertStylist>): Promise<Stylist | undefined> {
+  async updateStylist(id: string, salonId: string, updateData: Partial<InsertStylist>): Promise<Stylist | undefined> {
     const [stylist] = await db.update(stylists)
       .set(updateData)
-      .where(eq(stylists.id, id))
+      .where(and(eq(stylists.id, id), eq(stylists.salonId, salonId)))
       .returning();
     return stylist;
   }
 
-  async deleteStylist(id: string): Promise<boolean> {
-    const result = await db.delete(stylists).where(eq(stylists.id, id));
+  async deleteStylist(id: string, salonId: string): Promise<boolean> {
+    const result = await db.delete(stylists)
+      .where(and(eq(stylists.id, id), eq(stylists.salonId, salonId)));
     return result.rowCount !== null && result.rowCount > 0;
   }
 
@@ -279,10 +281,10 @@ export class DbStorage implements IStorage {
       }));
   }
 
-  async updateBookingStatus(data: UpdateBookingStatus): Promise<Booking | undefined> {
+  async updateBookingStatus(data: UpdateBookingStatus, salonId: string): Promise<Booking | undefined> {
     const [booking] = await db.update(bookings)
       .set({ status: data.status })
-      .where(eq(bookings.id, data.id))
+      .where(and(eq(bookings.id, data.id), eq(bookings.salonId, salonId)))
       .returning();
     return booking;
   }
@@ -315,7 +317,13 @@ export class DbStorage implements IStorage {
     return result.rowCount !== null && result.rowCount > 0;
   }
 
-  async setStylistAvailability(stylistId: string, availabilityList: InsertStylistAvailability[]): Promise<StylistAvailability[]> {
+  async setStylistAvailability(stylistId: string, salonId: string, availabilityList: InsertStylistAvailability[]): Promise<StylistAvailability[]> {
+    // First verify the stylist belongs to the salon
+    const stylist = await this.getStylistById(stylistId);
+    if (!stylist || stylist.salonId !== salonId) {
+      throw new Error("Stylist not found or access denied");
+    }
+
     // Delete existing availability for this stylist
     await db.delete(stylistAvailability)
       .where(eq(stylistAvailability.stylistId, stylistId));
