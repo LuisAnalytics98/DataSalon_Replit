@@ -18,6 +18,7 @@ export const services = pgTable("services", {
   description: text("description").notNull(),
   duration: text("duration").notNull(),
   price: integer("price").notNull(),
+  photo: text("photo"), // URL or file path for service photo
 });
 
 export const stylists = pgTable("stylists", {

@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Clock, DollarSign } from "lucide-react";
+import { Plus, Pencil, Trash2, Clock, DollarSign, Image } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function ServicesManagement() {
@@ -20,6 +20,7 @@ export default function ServicesManagement() {
     description: "",
     duration: "",
     price: 0,
+    photo: "",
   });
   const { toast } = useToast();
 
@@ -101,6 +102,7 @@ export default function ServicesManagement() {
       description: "",
       duration: "",
       price: 0,
+      photo: "",
     });
     setEditingService(null);
   };
@@ -123,6 +125,7 @@ export default function ServicesManagement() {
       description: service.description,
       duration: service.duration,
       price: service.price,
+      photo: service.photo || "",
     });
     setIsDialogOpen(true);
   };
@@ -208,6 +211,20 @@ export default function ServicesManagement() {
                   />
                 </div>
                 
+                <div>
+                  <Label htmlFor="service-photo">Foto (URL)</Label>
+                  <Input
+                    id="service-photo"
+                    data-testid="input-service-photo"
+                    value={formData.photo || ""}
+                    onChange={(e) => setFormData({ ...formData, photo: e.target.value })}
+                    placeholder="https://ejemplo.com/foto.jpg"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Ingresa la URL de una foto para el servicio
+                  </p>
+                </div>
+                
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="service-duration">Duración</Label>
@@ -258,7 +275,22 @@ export default function ServicesManagement() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {services.map((service) => (
-          <Card key={service.id} className="hover-elevate" data-testid={`service-card-${service.id}`}>
+          <Card key={service.id} className="hover-elevate overflow-hidden" data-testid={`service-card-${service.id}`}>
+            {service.photo && (
+              <div className="w-full h-48 overflow-hidden bg-muted">
+                <img
+                  src={service.photo}
+                  alt={service.name}
+                  className="w-full h-full object-cover"
+                  data-testid={`service-photo-${service.id}`}
+                />
+              </div>
+            )}
+            {!service.photo && (
+              <div className="w-full h-48 bg-muted flex items-center justify-center">
+                <Image className="w-12 h-12 text-muted-foreground" />
+              </div>
+            )}
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <span>{service.name}</span>

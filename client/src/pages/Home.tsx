@@ -126,7 +126,7 @@ export default function Home() {
   // Add images to services and stylists
   const servicesWithImages = services.map(service => ({
     ...service,
-    image: serviceImages[service.id] || haircutImage,
+    image: service.photo || serviceImages[service.id] || haircutImage, // Use photo from DB, fallback to hardcoded images
   }));
 
   const stylistsWithImages = stylists.map(stylist => ({
@@ -206,7 +206,7 @@ export default function Home() {
               description: confirmedBooking.service.description,
               duration: confirmedBooking.service.duration,
               price: confirmedBooking.service.price,
-              image: serviceImages[confirmedBooking.service.id] || haircutImage,
+              image: confirmedBooking.service.photo || serviceImages[confirmedBooking.service.id] || haircutImage,
             }}
             stylist={confirmedBooking.stylist ? {
               id: confirmedBooking.stylist.id,

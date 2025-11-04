@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { Stylist, InsertStylist, StylistAvailability, InsertStylistAvailability } from "@shared/schema";
+import type { Stylist, InsertStylist, StylistAvailability, InsertStylistAvailability, Service } from "@shared/schema";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Pencil, Trash2, Star, Briefcase, Calendar, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -40,12 +41,15 @@ export default function StylistsManagement() {
     rating: 40,
     specialties: [],
   });
-  const [specialtyInput, setSpecialtyInput] = useState("");
   const [availabilitySlots, setAvailabilitySlots] = useState<AvailabilitySlot[]>([]);
   const { toast } = useToast();
 
   const { data: stylists = [], isLoading } = useQuery<Stylist[]>({
     queryKey: ["/api/stylists"],
+  });
+
+  const { data: services = [] } = useQuery<Service[]>({
+    queryKey: ["/api/services"],
   });
 
   const { data: stylistAvailability = [] } = useQuery<StylistAvailability[]>({
@@ -156,7 +160,6 @@ export default function StylistsManagement() {
       rating: 40,
       specialties: [],
     });
-    setSpecialtyInput("");
     setEditingStylist(null);
   };
 
@@ -188,21 +191,19 @@ export default function StylistsManagement() {
     }
   };
 
-  const addSpecialty = () => {
-    if (specialtyInput.trim() && !formData.specialties.includes(specialtyInput.trim())) {
+  const toggleService = (serviceName: string) => {
+    const isSelected = formData.specialties.includes(serviceName);
+    if (isSelected) {
       setFormData({
         ...formData,
-        specialties: [...formData.specialties, specialtyInput.trim()],
+        specialties: formData.specialties.filter(s => s !== serviceName),
       });
-      setSpecialtyInput("");
+    } else {
+      setFormData({
+        ...formData,
+        specialties: [...formData.specialties, serviceName],
+      });
     }
-  };
-
-  const removeSpecialty = (specialty: string) => {
-    setFormData({
-      ...formData,
-      specialties: formData.specialties.filter(s => s !== specialty),
-    });
   };
 
   const handleManageAvailability = (stylist: Stylist) => {
@@ -355,43 +356,45 @@ export default function StylistsManagement() {
                 </div>
                 
                 <div>
-                  <Label htmlFor="specialty-input">Especialidades</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="specialty-input"
-                      data-testid="input-specialty"
-                      value={specialtyInput}
-                      onChange={(e) => setSpecialtyInput(e.target.value)}
-                      placeholder="ej: Corte"
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          addSpecialty();
-                        }
-                      }}
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={addSpecialty}
-                      data-testid="button-add-specialty"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </Button>
-                  </div>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {formData.specialties.map((specialty) => (
-                      <Badge
-                        key={specialty}
-                        variant="secondary"
-                        className="cursor-pointer"
-                        onClick={() => removeSpecialty(specialty)}
-                        data-testid={`badge-specialty-${specialty}`}
+                  <Label>Servicios que Ofrece</Label>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    Selecciona los servicios que este estilista puede realizar
+                  </p>
+                  <div className="space-y-3 max-h-64 overflow-y-auto">
+                    {services.map((service) => (
+                      <div
+                        key={service.id}
+                        className="flex items-center space-x-2"
+                        data-testid={`service-checkbox-container-${service.id}`}
                       >
-                        {specialty} ×
-                      </Badge>
+                        <Checkbox
+                          id={`service-${service.id}`}
+                          data-testid={`checkbox-service-${service.id}`}
+                          checked={formData.specialties.includes(service.name)}
+                          onCheckedChange={() => toggleService(service.name)}
+                        />
+                        <label
+                          htmlFor={`service-${service.id}`}
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                        >
+                          {service.name}
+                        </label>
+                      </div>
                     ))}
                   </div>
+                  {formData.specialties.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t">
+                      {formData.specialties.map((specialty) => (
+                        <Badge
+                          key={specialty}
+                          variant="secondary"
+                          data-testid={`badge-specialty-${specialty}`}
+                        >
+                          {specialty}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
               
