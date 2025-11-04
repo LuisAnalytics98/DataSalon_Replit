@@ -1,19 +1,38 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { Stylist, InsertStylist } from "@shared/schema";
+import type { Stylist, InsertStylist, StylistAvailability, InsertStylistAvailability } from "@shared/schema";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2, Star, Briefcase } from "lucide-react";
+import { Plus, Pencil, Trash2, Star, Briefcase, Calendar, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+const DAYS_OF_WEEK = [
+  { value: 0, label: "Lunes" },
+  { value: 1, label: "Martes" },
+  { value: 2, label: "Miércoles" },
+  { value: 3, label: "Jueves" },
+  { value: 4, label: "Viernes" },
+  { value: 5, label: "Sábado" },
+  { value: 6, label: "Domingo" },
+];
+
+interface AvailabilitySlot {
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+}
 
 export default function StylistsManagement() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isAvailabilityDialogOpen, setIsAvailabilityDialogOpen] = useState(false);
   const [editingStylist, setEditingStylist] = useState<Stylist | null>(null);
+  const [availabilityStylist, setAvailabilityStylist] = useState<Stylist | null>(null);
   const [formData, setFormData] = useState<InsertStylist>({
     id: "",
     name: "",
@@ -22,10 +41,22 @@ export default function StylistsManagement() {
     specialties: [],
   });
   const [specialtyInput, setSpecialtyInput] = useState("");
+  const [availabilitySlots, setAvailabilitySlots] = useState<AvailabilitySlot[]>([]);
   const { toast } = useToast();
 
   const { data: stylists = [], isLoading } = useQuery<Stylist[]>({
     queryKey: ["/api/stylists"],
+  });
+
+  const { data: stylistAvailability = [] } = useQuery<StylistAvailability[]>({
+    queryKey: ["/api/stylists", availabilityStylist?.id, "availability"],
+    enabled: !!availabilityStylist,
+    queryFn: async () => {
+      if (!availabilityStylist) return [];
+      const response = await fetch(`/api/stylists/${availabilityStylist.id}/availability`);
+      if (!response.ok) throw new Error("Failed to fetch availability");
+      return await response.json();
+    },
   });
 
   const createMutation = useMutation({
@@ -95,6 +126,28 @@ export default function StylistsManagement() {
     },
   });
 
+  const saveAvailabilityMutation = useMutation({
+    mutationFn: async ({ stylistId, availability }: { stylistId: string; availability: InsertStylistAvailability[] }) => {
+      const response = await apiRequest("POST", `/api/admin/stylists/${stylistId}/availability`, { availability });
+      return await response.json();
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/stylists", variables.stylistId, "availability"] });
+      setIsAvailabilityDialogOpen(false);
+      toast({
+        title: "Horarios actualizados",
+        description: "Los horarios del estilista se han actualizado exitosamente.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "No se pudieron actualizar los horarios.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const resetForm = () => {
     setFormData({
       id: "",
@@ -150,6 +203,61 @@ export default function StylistsManagement() {
       ...formData,
       specialties: formData.specialties.filter(s => s !== specialty),
     });
+  };
+
+  const handleManageAvailability = (stylist: Stylist) => {
+    setAvailabilityStylist(stylist);
+    setIsAvailabilityDialogOpen(true);
+  };
+
+  const addAvailabilitySlot = () => {
+    setAvailabilitySlots([
+      ...availabilitySlots,
+      { dayOfWeek: 0, startTime: "09:00", endTime: "17:00" },
+    ]);
+  };
+
+  const updateAvailabilitySlot = (index: number, field: keyof AvailabilitySlot, value: number | string) => {
+    const updated = [...availabilitySlots];
+    updated[index] = { ...updated[index], [field]: value };
+    setAvailabilitySlots(updated);
+  };
+
+  const removeAvailabilitySlot = (index: number) => {
+    setAvailabilitySlots(availabilitySlots.filter((_, i) => i !== index));
+  };
+
+  const handleSaveAvailability = () => {
+    if (!availabilityStylist) return;
+
+    const availability: InsertStylistAvailability[] = availabilitySlots.map(slot => ({
+      stylistId: availabilityStylist.id,
+      dayOfWeek: slot.dayOfWeek,
+      startTime: slot.startTime,
+      endTime: slot.endTime,
+    }));
+
+    saveAvailabilityMutation.mutate({
+      stylistId: availabilityStylist.id,
+      availability,
+    });
+  };
+
+  // Load availability slots when dialog opens
+  const handleOpenAvailabilityDialog = (open: boolean) => {
+    setIsAvailabilityDialogOpen(open);
+    if (open && stylistAvailability) {
+      setAvailabilitySlots(
+        stylistAvailability.map(av => ({
+          dayOfWeek: av.dayOfWeek,
+          startTime: av.startTime,
+          endTime: av.endTime,
+        }))
+      );
+    } else if (!open) {
+      setAvailabilitySlots([]);
+      setAvailabilityStylist(null);
+    }
   };
 
   if (isLoading) {
@@ -344,17 +452,123 @@ export default function StylistsManagement() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {stylist.specialties.map((specialty) => (
-                  <Badge key={specialty} variant="outline">
-                    {specialty}
-                  </Badge>
-                ))}
+              <div className="space-y-3">
+                <div className="flex flex-wrap gap-2">
+                  {stylist.specialties.map((specialty) => (
+                    <Badge key={specialty} variant="outline">
+                      {specialty}
+                    </Badge>
+                  ))}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => handleManageAvailability(stylist)}
+                  data-testid={`button-manage-availability-${stylist.id}`}
+                >
+                  <Calendar className="w-4 h-4 mr-2" />
+                  Gestionar Horarios
+                </Button>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
+
+      {/* Availability Management Dialog */}
+      <Dialog open={isAvailabilityDialogOpen} onOpenChange={handleOpenAvailabilityDialog}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto" data-testid="dialog-availability">
+          <DialogHeader>
+            <DialogTitle>Gestionar Horarios - {availabilityStylist?.name}</DialogTitle>
+            <DialogDescription>
+              Define los días y horarios de trabajo del estilista
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {availabilitySlots.map((slot, index) => (
+              <Card key={index} className="p-4">
+                <div className="grid grid-cols-[2fr_1fr_1fr_auto] gap-3 items-end">
+                  <div>
+                    <Label>Día de la semana</Label>
+                    <Select
+                      value={slot.dayOfWeek.toString()}
+                      onValueChange={(value) => updateAvailabilitySlot(index, "dayOfWeek", parseInt(value))}
+                    >
+                      <SelectTrigger data-testid={`select-day-${index}`}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {DAYS_OF_WEEK.map((day) => (
+                          <SelectItem key={day.value} value={day.value.toString()}>
+                            {day.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label>Hora inicio</Label>
+                    <Input
+                      type="time"
+                      value={slot.startTime}
+                      onChange={(e) => updateAvailabilitySlot(index, "startTime", e.target.value)}
+                      data-testid={`input-start-time-${index}`}
+                    />
+                  </div>
+
+                  <div>
+                    <Label>Hora fin</Label>
+                    <Input
+                      type="time"
+                      value={slot.endTime}
+                      onChange={(e) => updateAvailabilitySlot(index, "endTime", e.target.value)}
+                      data-testid={`input-end-time-${index}`}
+                    />
+                  </div>
+
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeAvailabilitySlot(index)}
+                    data-testid={`button-remove-slot-${index}`}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </Card>
+            ))}
+
+            <Button
+              variant="outline"
+              onClick={addAvailabilitySlot}
+              className="w-full"
+              data-testid="button-add-availability-slot"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Agregar Horario
+            </Button>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsAvailabilityDialogOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSaveAvailability}
+              disabled={saveAvailabilityMutation.isPending}
+              data-testid="button-save-availability"
+            >
+              {saveAvailabilityMutation.isPending ? "Guardando..." : "Guardar Horarios"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

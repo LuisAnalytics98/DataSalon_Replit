@@ -1,19 +1,34 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { StylistAvailability } from "@shared/schema";
 
 interface DateTimeSelectionProps {
   onContinue: (date: Date, time: string) => void;
   initialDate?: Date;
   initialTime?: string;
+  stylistId?: string | null;
 }
 
-export default function DateTimeSelection({ onContinue, initialDate, initialTime }: DateTimeSelectionProps) {
+export default function DateTimeSelection({ onContinue, initialDate, initialTime, stylistId }: DateTimeSelectionProps) {
   const [selectedDate, setSelectedDate] = useState<Date | null>(initialDate || null);
   const [selectedTime, setSelectedTime] = useState<string | null>(initialTime || null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
+
+  // Fetch stylist availability
+  const { data: availability = [] } = useQuery<StylistAvailability[]>({
+    queryKey: ["/api/stylists", stylistId, "availability"],
+    enabled: !!stylistId && stylistId !== "any",
+    queryFn: async () => {
+      if (!stylistId || stylistId === "any") return [];
+      const response = await fetch(`/api/stylists/${stylistId}/availability`);
+      if (!response.ok) throw new Error("Failed to fetch availability");
+      return await response.json();
+    },
+  });
 
   const timeSlots = [
     "9:00 AM", "9:30 AM", "10:00 AM", "10:30 AM", "11:00 AM", "11:30 AM",
@@ -61,6 +76,68 @@ export default function DateTimeSelection({ onContinue, initialDate, initialTime
     today.setHours(0, 0, 0, 0);
     return date < today;
   };
+
+  // Check if a date has available slots based on stylist availability
+  const isDateAvailable = (date: Date) => {
+    if (!stylistId || stylistId === "any") return true; // Any stylist = all dates available
+    if (availability.length === 0) return true; // No availability data = all dates available
+    
+    // Monday = 0 in our schema, Sunday = 6 
+    // JavaScript's getDay(): Sunday = 0, Monday = 1, etc.
+    const dayOfWeek = date.getDay() === 0 ? 6 : date.getDay() - 1; // Convert JS day to our schema day
+    
+    return availability.some(slot => slot.dayOfWeek === dayOfWeek);
+  };
+
+  // Get available time slots for the selected date
+  const availableTimeSlots = useMemo(() => {
+    if (!selectedDate || !stylistId || stylistId === "any") {
+      return timeSlots; // All time slots available if no stylist or any stylist selected
+    }
+    
+    if (availability.length === 0) {
+      return timeSlots; // No availability data = all slots available
+    }
+    
+    // Get the day of week for selected date (convert JS day to our schema day)
+    const dayOfWeek = selectedDate.getDay() === 0 ? 6 : selectedDate.getDay() - 1;
+    
+    // Find availability slots for this day of week
+    const daySlots = availability.filter(slot => slot.dayOfWeek === dayOfWeek);
+    
+    if (daySlots.length === 0) {
+      return []; // No slots for this day
+    }
+    
+    // Helper function to convert time slot string to minutes since midnight
+    const timeToMinutes = (timeStr: string): number => {
+      const [time, period] = timeStr.split(' ');
+      let [hours, minutes] = time.split(':').map(Number);
+      
+      if (period === 'PM' && hours !== 12) hours += 12;
+      if (period === 'AM' && hours === 12) hours = 0;
+      
+      return hours * 60 + minutes;
+    };
+    
+    // Helper function to convert 24-hour time to minutes since midnight
+    const time24ToMinutes = (timeStr: string): number => {
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      return hours * 60 + minutes;
+    };
+    
+    // Filter time slots based on availability
+    return timeSlots.filter(slot => {
+      const slotMinutes = timeToMinutes(slot);
+      
+      return daySlots.some(availSlot => {
+        const startMinutes = time24ToMinutes(availSlot.startTime);
+        const endMinutes = time24ToMinutes(availSlot.endTime);
+        
+        return slotMinutes >= startMinutes && slotMinutes < endMinutes;
+      });
+    });
+  }, [selectedDate, stylistId, availability, timeSlots]);
 
   const handleContinue = () => {
     if (selectedDate && selectedTime) {
@@ -115,24 +192,28 @@ export default function DateTimeSelection({ onContinue, initialDate, initialTime
             </div>
 
             <div className="grid grid-cols-7 gap-2">
-              {days.map((day, index) => (
-                <button
-                  key={index}
-                  disabled={!day || isPastDate(day)}
-                  onClick={() => day && setSelectedDate(day)}
-                  className={cn(
-                    "aspect-square rounded-lg text-sm font-medium transition-all",
-                    !day && "invisible",
-                    day && !isPastDate(day) && "hover-elevate cursor-pointer",
-                    day && isPastDate(day) && "text-muted-foreground/40 cursor-not-allowed",
-                    day && !isPastDate(day) && !isSameDay(day, selectedDate) && "bg-muted text-foreground",
-                    isSameDay(day, selectedDate) && "bg-primary text-primary-foreground"
-                  )}
-                  data-testid={day ? `button-date-${day.getDate()}` : undefined}
-                >
-                  {day?.getDate()}
-                </button>
-              ))}
+              {days.map((day, index) => {
+                const isDisabled = !day || isPastDate(day) || (day && !isDateAvailable(day));
+                
+                return (
+                  <button
+                    key={index}
+                    disabled={isDisabled}
+                    onClick={() => day && setSelectedDate(day)}
+                    className={cn(
+                      "aspect-square rounded-lg text-sm font-medium transition-all",
+                      !day && "invisible",
+                      day && !isDisabled && "hover-elevate cursor-pointer",
+                      day && isDisabled && "text-muted-foreground/40 cursor-not-allowed",
+                      day && !isDisabled && !isSameDay(day, selectedDate) && "bg-muted text-foreground",
+                      isSameDay(day, selectedDate) && "bg-primary text-primary-foreground"
+                    )}
+                    data-testid={day ? `button-date-${day.getDate()}` : undefined}
+                  >
+                    {day?.getDate()}
+                  </button>
+                );
+              })}
             </div>
           </Card>
 
@@ -145,9 +226,13 @@ export default function DateTimeSelection({ onContinue, initialDate, initialTime
               <div className="text-center py-12 text-muted-foreground">
                 Por favor selecciona una fecha primero
               </div>
+            ) : availableTimeSlots.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                No hay horarios disponibles para esta fecha
+              </div>
             ) : (
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 max-h-96 overflow-y-auto">
-                {timeSlots.map((time) => (
+                {availableTimeSlots.map((time) => (
                   <button
                     key={time}
                     onClick={() => setSelectedTime(time)}

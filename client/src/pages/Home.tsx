@@ -135,6 +135,16 @@ export default function Home() {
     rating: stylist.rating / 10, // Convert from 0-50 to 0-5
   }));
 
+  // Filter stylists by selected service
+  const filteredStylists = selectedService
+    ? stylistsWithImages.filter(stylist =>
+        stylist.specialties.some(specialty =>
+          specialty.toLowerCase().includes(selectedService.name.split(' ')[0].toLowerCase()) ||
+          selectedService.name.toLowerCase().includes(specialty.toLowerCase())
+        )
+      )
+    : stylistsWithImages;
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -165,7 +175,7 @@ export default function Home() {
 
         {currentStep === 3 && (
           <StylistSelection
-            stylists={stylistsWithImages}
+            stylists={filteredStylists}
             onContinue={handleStylistSelect}
             initialStylist={bookingData.stylistId}
             isLoading={stylistsLoading}
@@ -177,6 +187,7 @@ export default function Home() {
             onContinue={handleDateTimeSelect}
             initialDate={bookingData.date}
             initialTime={bookingData.time}
+            stylistId={bookingData.stylistId}
           />
         )}
 
