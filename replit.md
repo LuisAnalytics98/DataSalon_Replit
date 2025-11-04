@@ -2,7 +2,19 @@
 
 ## Overview
 
-This is a premium salon booking application that allows clients to book appointments with stylists for various salon services. The application features a multi-step booking flow with service selection, stylist selection, date/time scheduling, and client information collection. It emphasizes a luxurious dark theme with gold accents, inspired by high-end salon experiences.
+This is a Spanish-language premium multi-tenant salon booking application that allows each salon to manage their appointments independently with complete data isolation. Clients can book appointments through a public booking flow (no authentication required) while salon staff access protected admin/employee panels via Replit Auth. The application features a luxurious dark theme (#1a1a1a background) with gold accents (#D4AF37), Playfair Display headings, and Inter body text.
+
+**Multi-Tenancy:**
+- Each salon has isolated data (services, stylists, bookings)
+- Unique booking URLs per salon: `/book/:salonSlug`
+- Role-based access control with salon membership verification
+- Cross-tenant data protection at database and API levels
+
+**Authentication:**
+- Public booking flow: No authentication required
+- Admin/Employee panels: Protected by Replit Auth (OIDC)
+- Whitelist mechanism via `salon_users` table
+- Session-based authentication with PostgreSQL session store
 
 ## User Preferences
 
@@ -63,10 +75,38 @@ Multi-step wizard pattern with five distinct steps:
 - HTTP server creation using Node's built-in `http` module
 
 **API Design:**
-- RESTful endpoints following resource-based URL patterns
-- `/api/services` - GET all available salon services
-- `/api/stylists` - GET all available stylists
-- `/api/bookings` - POST to create new bookings
+Multi-tenant API architecture with clear separation between public and protected routes:
+
+*Public Routes (no authentication):*
+- `GET /api/public/:salonSlug/services` - List salon services
+- `GET /api/public/:salonSlug/stylists` - List salon stylists
+- `GET /api/public/stylists/:id/availability` - Get stylist availability
+- `POST /api/public/:salonSlug/bookings` - Create booking (public)
+
+*Admin Routes (Replit Auth required):*
+- `GET /api/admin/services` - List salon services (scoped to user's salon)
+- `POST /api/admin/services` - Create service
+- `PATCH /api/admin/services/:id` - Update service
+- `DELETE /api/admin/services/:id` - Delete service
+- `GET /api/admin/stylists` - List salon stylists (scoped to user's salon)
+- `POST /api/admin/stylists` - Create stylist
+- `PATCH /api/admin/stylists/:id` - Update stylist
+- `DELETE /api/admin/stylists/:id` - Delete stylist
+- `POST /api/admin/stylists/:id/availability` - Update stylist availability
+- `GET /api/admin/bookings` - List bookings (scoped to user's salon)
+- `PATCH /api/admin/bookings/:id/status` - Update booking status
+
+*Authentication Routes:*
+- `GET /auth/login` - Initiate Replit Auth login
+- `GET /auth/callback` - Handle OAuth callback
+- `GET /auth/user` - Get current user info
+- `POST /auth/logout` - End session
+
+**Security Measures:**
+- All admin mutations verify salon ownership using `and(eq(id), eq(salonId))`
+- Middleware enforces salon context resolution from slug
+- Role-based access control checks salon membership
+- Error messages use "not found or access denied" to prevent information leakage
 
 **Data Validation:**
 - Zod schemas for runtime validation of incoming requests
@@ -91,14 +131,24 @@ Multi-step wizard pattern with five distinct steps:
 - Zod integration for automatic schema validation from database models
 
 **Data Models:**
-- `clients` - Customer information (name, email, phone, notes)
-- `services` - Salon services with pricing and duration
-- `stylists` - Staff profiles with specialties and ratings
-- `bookings` - Appointment records linking clients, services, and stylists with date/time
+
+*Multi-Tenancy Core:*
+- `salons` - Salon accounts with unique slug, name, and settings
+- `users` - User accounts (linked to Replit Auth sub)
+- `salon_users` - Junction table for salon membership and roles (admin, employee)
+
+*Salon-Scoped Data:*
+- `clients` - Customer information (name, email, phone, notes) - scoped to salon
+- `services` - Salon services with pricing and duration - scoped to salon via `salonId`
+- `stylists` - Staff profiles with specialties and ratings - scoped to salon via `salonId`
+- `stylist_availability` - Weekly schedules - linked to stylists
+- `bookings` - Appointment records - scoped to salon via `salonId`
 
 **Seeding Strategy:**
-- Automatic database seeding on server startup for services and stylists
-- Idempotent seed operations to prevent duplicate data
+- Demo salon ("demo-salon" slug) seeded on server startup
+- Includes 3 services (Corte de Cabello, Manicura, Pedicura)
+- Includes 3 stylists (María González, Carlos Rodríguez, Ana Martínez)
+- Idempotent seed operations prevent duplicate data
 
 ### External Dependencies
 
@@ -133,8 +183,12 @@ Multi-step wizard pattern with five distinct steps:
 - TSX - TypeScript execution engine for development
 - Replit-specific plugins for enhanced development experience (cartographer, dev banner, runtime error modal)
 
-**Session Management:**
-- connect-pg-simple - PostgreSQL session store for Express sessions (configured but session usage not implemented in current routes)
+**Authentication & Session Management:**
+- Replit Auth (OIDC) - Primary authentication provider
+- openid-client - OIDC client library for Replit Auth integration
+- express-session - Session middleware with PostgreSQL persistence
+- connect-pg-simple - PostgreSQL session store for secure session management
+- Passport.js - Authentication middleware (configured for future extensibility)
 
 **Fonts:**
 - Google Fonts API - Playfair Display and Inter font families loaded via CDN
