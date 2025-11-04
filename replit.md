@@ -33,6 +33,11 @@ Preferred communication style: Simple, everyday language.
 - React Hook Form with Zod validation for form state and validation
 - Local component state using React hooks for UI-specific state
 
+**Branding:**
+- Header component displaying "Data Salon" logo across all pages
+- Golden armchair icon representing the luxury salon brand
+- Persistent header maintains brand identity throughout booking flow
+
 **Booking Flow:**
 Multi-step wizard pattern with five distinct steps:
 1. Client information collection

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import Header from "@/components/Header";
 import ProgressStepper from "@/components/ProgressStepper";
 import ClientInfoForm, { ClientInfo } from "@/components/ClientInfoForm";
 import ServiceSelection from "@/components/ServiceSelection";
@@ -136,6 +137,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background">
+      <Header />
       {currentStep < 5 && (
         <ProgressStepper 
           steps={steps} 
