@@ -8,14 +8,17 @@ import {
   type InsertService,
   type Stylist,
   type InsertStylist,
+  type StylistAvailability,
+  type InsertStylistAvailability,
   type UpdateBookingStatus,
   clients,
   bookings,
   services,
   stylists,
+  stylistAvailability,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 
 export interface IStorage {
   // Clients
@@ -43,6 +46,13 @@ export interface IStorage {
   getBookingById(id: string): Promise<BookingWithDetails | undefined>;
   getAllBookings(): Promise<BookingWithDetails[]>;
   updateBookingStatus(data: UpdateBookingStatus): Promise<Booking | undefined>;
+  
+  // Stylist Availability
+  getStylistAvailability(stylistId: string): Promise<StylistAvailability[]>;
+  createStylistAvailability(availability: InsertStylistAvailability): Promise<StylistAvailability>;
+  updateStylistAvailability(id: number, availability: Partial<InsertStylistAvailability>): Promise<StylistAvailability | undefined>;
+  deleteStylistAvailability(id: number): Promise<boolean>;
+  setStylistAvailability(stylistId: string, availability: InsertStylistAvailability[]): Promise<StylistAvailability[]>;
 }
 
 export class DbStorage implements IStorage {
@@ -238,6 +248,50 @@ export class DbStorage implements IStorage {
       .where(eq(bookings.id, data.id))
       .returning();
     return booking;
+  }
+
+  // Stylist Availability
+  async getStylistAvailability(stylistId: string): Promise<StylistAvailability[]> {
+    return await db.select()
+      .from(stylistAvailability)
+      .where(eq(stylistAvailability.stylistId, stylistId));
+  }
+
+  async createStylistAvailability(insertAvailability: InsertStylistAvailability): Promise<StylistAvailability> {
+    const [availability] = await db.insert(stylistAvailability)
+      .values(insertAvailability)
+      .returning();
+    return availability;
+  }
+
+  async updateStylistAvailability(id: number, updateData: Partial<InsertStylistAvailability>): Promise<StylistAvailability | undefined> {
+    const [availability] = await db.update(stylistAvailability)
+      .set(updateData)
+      .where(eq(stylistAvailability.id, id))
+      .returning();
+    return availability;
+  }
+
+  async deleteStylistAvailability(id: number): Promise<boolean> {
+    const result = await db.delete(stylistAvailability)
+      .where(eq(stylistAvailability.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  async setStylistAvailability(stylistId: string, availabilityList: InsertStylistAvailability[]): Promise<StylistAvailability[]> {
+    // Delete existing availability for this stylist
+    await db.delete(stylistAvailability)
+      .where(eq(stylistAvailability.stylistId, stylistId));
+    
+    // Insert new availability
+    if (availabilityList.length === 0) {
+      return [];
+    }
+    
+    const inserted = await db.insert(stylistAvailability)
+      .values(availabilityList)
+      .returning();
+    return inserted;
   }
 }
 

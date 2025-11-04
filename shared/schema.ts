@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, timestamp, serial } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -40,6 +40,14 @@ export const bookings = pgTable("bookings", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const stylistAvailability = pgTable("stylist_availability", {
+  id: serial("id").primaryKey(),
+  stylistId: varchar("stylist_id").notNull().references(() => stylists.id, { onDelete: "cascade" }),
+  dayOfWeek: integer("day_of_week").notNull(), // 0 = Monday, 6 = Sunday
+  startTime: text("start_time").notNull(), // Format: "HH:mm" (24-hour)
+  endTime: text("end_time").notNull(), // Format: "HH:mm" (24-hour)
+});
+
 export const insertClientSchema = createInsertSchema(clients).omit({
   id: true,
   createdAt: true,
@@ -56,6 +64,10 @@ export const insertBookingSchema = createInsertSchema(bookings).omit({
   status: true,
 });
 
+export const insertStylistAvailabilitySchema = createInsertSchema(stylistAvailability).omit({
+  id: true,
+});
+
 export const updateBookingStatusSchema = z.object({
   id: z.string(),
   status: z.enum(["backlog", "for_today", "in_progress", "done", "cancelled"]),
@@ -69,6 +81,8 @@ export type Stylist = typeof stylists.$inferSelect;
 export type InsertStylist = z.infer<typeof insertStylistSchema>;
 export type Booking = typeof bookings.$inferSelect;
 export type InsertBooking = z.infer<typeof insertBookingSchema>;
+export type StylistAvailability = typeof stylistAvailability.$inferSelect;
+export type InsertStylistAvailability = z.infer<typeof insertStylistAvailabilitySchema>;
 export type UpdateBookingStatus = z.infer<typeof updateBookingStatusSchema>;
 
 export interface BookingWithDetails extends Booking {

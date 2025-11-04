@@ -6,6 +6,7 @@ import {
   insertBookingSchema,
   insertServiceSchema,
   insertStylistSchema,
+  insertStylistAvailabilitySchema,
   updateBookingStatusSchema,
 } from "@shared/schema";
 
@@ -183,6 +184,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting stylist:", error);
       res.status(500).json({ error: "Failed to delete stylist" });
+    }
+  });
+
+  // Stylist availability management
+  app.get("/api/stylists/:id/availability", async (req, res) => {
+    try {
+      const availability = await storage.getStylistAvailability(req.params.id);
+      res.json(availability);
+    } catch (error) {
+      console.error("Error fetching stylist availability:", error);
+      res.status(500).json({ error: "Failed to fetch stylist availability" });
+    }
+  });
+
+  app.post("/api/admin/stylists/:id/availability", async (req, res) => {
+    try {
+      const { availability } = req.body;
+      
+      // Validate each availability slot
+      const validatedAvailability = availability.map((slot: any) =>
+        insertStylistAvailabilitySchema.parse({
+          ...slot,
+          stylistId: req.params.id,
+        })
+      );
+      
+      const result = await storage.setStylistAvailability(req.params.id, validatedAvailability);
+      res.json(result);
+    } catch (error) {
+      console.error("Error setting stylist availability:", error);
+      res.status(400).json({ error: "Failed to set stylist availability" });
     }
   });
 
