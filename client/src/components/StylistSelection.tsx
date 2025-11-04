@@ -2,47 +2,9 @@ import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Star } from "lucide-react";
+import { Star, User } from "lucide-react";
 import { cn } from "@/lib/utils";
-import sarahImage from "@assets/generated_images/Stylist_profile_Sarah_4931a600.png";
-import michaelImage from "@assets/generated_images/Stylist_profile_Michael_18134496.png";
-import emmaImage from "@assets/generated_images/Stylist_profile_Emma_62c236b6.png";
-
-export interface Stylist {
-  id: string;
-  name: string;
-  specialties: string[];
-  experience: string;
-  rating: number;
-  image: string;
-}
-
-const stylists: Stylist[] = [
-  {
-    id: "sarah",
-    name: "Sarah Johnson",
-    specialties: ["Corte", "Color", "Peinado"],
-    experience: "8 años",
-    rating: 4.9,
-    image: sarahImage,
-  },
-  {
-    id: "michael",
-    name: "Michael Chen",
-    specialties: ["Corte", "Recorte de Barba", "Peinado"],
-    experience: "6 años",
-    rating: 4.8,
-    image: michaelImage,
-  },
-  {
-    id: "emma",
-    name: "Emma Davis",
-    specialties: ["Manicura", "Pedicura", "Arte de Uñas"],
-    experience: "5 años",
-    rating: 5.0,
-    image: emmaImage,
-  },
-];
+import type { Stylist } from "@shared/schema";
 
 interface StylistSelectionProps {
   stylists: Stylist[];
@@ -88,11 +50,17 @@ export default function StylistSelection({ stylists, onContinue, initialStylist,
               >
                 <div className="flex flex-col sm:flex-row gap-6">
                   <div className="flex-shrink-0">
-                    <img
-                      src={stylist.image}
-                      alt={stylist.name}
-                      className="w-32 h-32 rounded-xl object-cover mx-auto sm:mx-0"
-                    />
+                    {stylist.imageUrl ? (
+                      <img
+                        src={stylist.imageUrl}
+                        alt={stylist.name}
+                        className="w-32 h-32 rounded-xl object-cover mx-auto sm:mx-0"
+                      />
+                    ) : (
+                      <div className="w-32 h-32 rounded-xl bg-muted flex items-center justify-center mx-auto sm:mx-0">
+                        <User className="w-12 h-12 text-muted-foreground" />
+                      </div>
+                    )}
                   </div>
                   
                   <div className="flex-1 text-center sm:text-left">

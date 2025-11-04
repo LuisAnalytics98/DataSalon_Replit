@@ -60,6 +60,7 @@ export const services = pgTable("services", {
   duration: text("duration").notNull(),
   price: integer("price").notNull(),
   photo: text("photo"), // URL or file path for service photo
+  imageUrl: text("image_url"), // URL for uploaded service image from object storage
 });
 
 export const stylists = pgTable("stylists", {
@@ -70,6 +71,7 @@ export const stylists = pgTable("stylists", {
   experience: text("experience").notNull(),
   rating: integer("rating").notNull(),
   specialties: text("specialties").array().notNull(),
+  imageUrl: text("image_url"), // URL for uploaded stylist image from object storage
 });
 
 export const bookings = pgTable("bookings", {

@@ -2,14 +2,16 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Service, InsertService } from "@shared/schema";
+import type { UploadResult } from "@uppy/core";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Clock, DollarSign, Image } from "lucide-react";
+import { Plus, Pencil, Trash2, Clock, DollarSign, Image, Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { ObjectUploader } from "@/components/ObjectUploader";
 
 export default function ServicesManagement() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -94,6 +96,48 @@ export default function ServicesManagement() {
       });
     },
   });
+
+  const uploadImageMutation = useMutation({
+    mutationFn: async ({ id, imageUrl }: { id: string; imageUrl: string }) => {
+      const response = await apiRequest("PUT", `/api/admin/services/${id}/image`, { imageUrl });
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/services"] });
+      toast({
+        title: "Imagen cargada",
+        description: "La imagen del servicio se ha cargado exitosamente.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "No se pudo cargar la imagen.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleGetUploadParameters = async () => {
+    const response = await fetch("/api/objects/upload", {
+      method: "POST",
+      credentials: "include",
+    });
+    const data = await response.json();
+    return {
+      method: "PUT" as const,
+      url: data.uploadURL,
+    };
+  };
+
+  const handleUploadComplete = (serviceId: string) => (result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
+    if (result.successful && result.successful.length > 0) {
+      const uploadedFile = result.successful[0];
+      if (uploadedFile.uploadURL) {
+        uploadImageMutation.mutate({ id: serviceId, imageUrl: uploadedFile.uploadURL });
+      }
+    }
+  };
 
   const resetForm = () => {
     setFormData({
@@ -276,19 +320,42 @@ export default function ServicesManagement() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {services.map((service) => (
           <Card key={service.id} className="hover-elevate overflow-hidden" data-testid={`service-card-${service.id}`}>
-            {service.photo && (
-              <div className="w-full h-48 overflow-hidden bg-muted">
+            {(service.imageUrl || service.photo) && (
+              <div className="w-full h-48 overflow-hidden bg-muted relative">
                 <img
-                  src={service.photo}
+                  src={service.imageUrl || service.photo || ""}
                   alt={service.name}
                   className="w-full h-full object-cover"
                   data-testid={`service-photo-${service.id}`}
                 />
+                <div className="absolute bottom-2 right-2">
+                  <ObjectUploader
+                    maxNumberOfFiles={1}
+                    maxFileSize={10485760}
+                    onGetUploadParameters={handleGetUploadParameters}
+                    onComplete={handleUploadComplete(service.id)}
+                    buttonClassName="h-8"
+                  >
+                    <Upload className="w-3 h-3 mr-1" />
+                    <span className="text-xs">Cambiar</span>
+                  </ObjectUploader>
+                </div>
               </div>
             )}
-            {!service.photo && (
-              <div className="w-full h-48 bg-muted flex items-center justify-center">
+            {!service.imageUrl && !service.photo && (
+              <div className="w-full h-48 bg-muted flex items-center justify-center relative">
                 <Image className="w-12 h-12 text-muted-foreground" />
+                <div className="absolute bottom-2 right-2">
+                  <ObjectUploader
+                    maxNumberOfFiles={1}
+                    maxFileSize={10485760}
+                    onGetUploadParameters={handleGetUploadParameters}
+                    onComplete={handleUploadComplete(service.id)}
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    Subir Imagen
+                  </ObjectUploader>
+                </div>
               </div>
             )}
             <CardHeader>

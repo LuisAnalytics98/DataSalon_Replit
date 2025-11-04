@@ -1,47 +1,10 @@
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Check, Clock } from "lucide-react";
+import { Check, Clock, Image as ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import haircutImage from "@assets/generated_images/Haircut_service_image_c010f519.png";
-import manicureImage from "@assets/generated_images/Manicure_service_image_c9507d7a.png";
-import pedicureImage from "@assets/generated_images/Pedicure_service_image_68db06c2.png";
-
-export interface Service {
-  id: string;
-  name: string;
-  description: string;
-  duration: string;
-  price: number;
-  image: string;
-}
-
-const services: Service[] = [
-  {
-    id: "haircut",
-    name: "Corte de Cabello",
-    description: "Corte de cabello profesional y peinado adaptado a tus preferencias",
-    duration: "60 min",
-    price: 65,
-    image: haircutImage,
-  },
-  {
-    id: "manicure",
-    name: "Manicura",
-    description: "Cuidado completo de uñas con limado, pulido y esmaltado",
-    duration: "45 min",
-    price: 45,
-    image: manicureImage,
-  },
-  {
-    id: "pedicure",
-    name: "Pedicura",
-    description: "Tratamiento relajante para pies con exfoliación y cuidado de uñas",
-    duration: "60 min",
-    price: 55,
-    image: pedicureImage,
-  },
-];
+import placeholderImage from "@assets/generated_images/Haircut_service_image_c010f519.png";
+import type { Service } from "@shared/schema";
 
 interface ServiceSelectionProps {
   services: Service[];
@@ -85,12 +48,18 @@ export default function ServiceSelection({ services, onContinue, initialService,
                 onClick={() => setSelectedService(service.id)}
                 data-testid={`card-service-${service.id}`}
               >
-                <div className="relative aspect-[4/3] overflow-hidden">
-                  <img
-                    src={service.image}
-                    alt={service.name}
-                    className="w-full h-full object-cover"
-                  />
+                <div className="relative aspect-[4/3] overflow-hidden bg-muted">
+                  {(service.imageUrl || service.photo) ? (
+                    <img
+                      src={service.imageUrl || service.photo || ""}
+                      alt={service.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-muted">
+                      <ImageIcon className="w-16 h-16 text-muted-foreground" />
+                    </div>
+                  )}
                   {isSelected && (
                     <div className="absolute top-4 right-4 w-8 h-8 rounded-full bg-primary flex items-center justify-center">
                       <Check className="w-5 h-5 text-primary-foreground" />

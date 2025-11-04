@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Stylist, InsertStylist, StylistAvailability, InsertStylistAvailability, Service, User } from "@shared/schema";
+import type { UploadResult } from "@uppy/core";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,9 +10,10 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Pencil, Trash2, Star, Briefcase, Calendar, Clock, UserCircle } from "lucide-react";
+import { Plus, Pencil, Trash2, Star, Briefcase, Calendar, Clock, UserCircle, Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ObjectUploader } from "@/components/ObjectUploader";
 
 const DAYS_OF_WEEK = [
   { value: 0, label: "Lunes" },
@@ -157,6 +159,48 @@ export default function StylistsManagement() {
       });
     },
   });
+
+  const uploadImageMutation = useMutation({
+    mutationFn: async ({ id, imageUrl }: { id: string; imageUrl: string }) => {
+      const response = await apiRequest("PUT", `/api/admin/stylists/${id}/image`, { imageUrl });
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stylists"] });
+      toast({
+        title: "Imagen cargada",
+        description: "La imagen del estilista se ha cargado exitosamente.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "No se pudo cargar la imagen.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleGetUploadParameters = async () => {
+    const response = await fetch("/api/objects/upload", {
+      method: "POST",
+      credentials: "include",
+    });
+    const data = await response.json();
+    return {
+      method: "PUT" as const,
+      url: data.uploadURL,
+    };
+  };
+
+  const handleUploadComplete = (stylistId: string) => (result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
+    if (result.successful && result.successful.length > 0) {
+      const uploadedFile = result.successful[0];
+      if (uploadedFile.uploadURL) {
+        uploadImageMutation.mutate({ id: stylistId, imageUrl: uploadedFile.uploadURL });
+      }
+    }
+  };
 
   const resetForm = () => {
     setFormData({
@@ -456,7 +500,42 @@ export default function StylistsManagement() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {stylists.map((stylist) => (
           <Card key={stylist.id} className="hover-elevate" data-testid={`stylist-card-${stylist.id}`}>
+            {stylist.imageUrl && (
+              <div className="w-full h-48 overflow-hidden bg-muted relative">
+                <img
+                  src={stylist.imageUrl}
+                  alt={stylist.name}
+                  className="w-full h-full object-cover"
+                  data-testid={`stylist-photo-${stylist.id}`}
+                />
+                <div className="absolute bottom-2 right-2">
+                  <ObjectUploader
+                    maxNumberOfFiles={1}
+                    maxFileSize={10485760}
+                    onGetUploadParameters={handleGetUploadParameters}
+                    onComplete={handleUploadComplete(stylist.id)}
+                    buttonClassName="h-8"
+                  >
+                    <Upload className="w-3 h-3 mr-1" />
+                    <span className="text-xs">Cambiar</span>
+                  </ObjectUploader>
+                </div>
+              </div>
+            )}
             <CardHeader>
+              {!stylist.imageUrl && (
+                <div className="flex gap-2 mb-2">
+                  <ObjectUploader
+                    maxNumberOfFiles={1}
+                    maxFileSize={10485760}
+                    onGetUploadParameters={handleGetUploadParameters}
+                    onComplete={handleUploadComplete(stylist.id)}
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    Subir Imagen
+                  </ObjectUploader>
+                </div>
+              )}
               <CardTitle className="flex items-center justify-between">
                 <span>{stylist.name}</span>
                 <div className="flex gap-2">

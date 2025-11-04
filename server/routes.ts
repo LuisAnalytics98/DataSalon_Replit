@@ -14,6 +14,8 @@ import {
   insertSalonUserSchema,
 } from "@shared/schema";
 import type { Salon } from "@shared/schema";
+import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
+import { ObjectPermission } from "./objectAcl";
 
 // Extend Express types for authentication and salon context
 declare global {
@@ -138,6 +140,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/public/:salonSlug/bookings", resolveSalonSlug, async (req, res) => {
     try {
       const { clientInfo, serviceId, stylistId, date, time } = req.body;
+
+      // Check if time slot is available (if stylist is specified)
+      if (stylistId && stylistId !== "any") {
+        const appointmentDate = new Date(date);
+        const existingBookings = await storage.getBookingsBySalon(req.salon!.id);
+        
+        // Check for conflicts with existing bookings for this stylist on the same date and time
+        const hasConflict = existingBookings.some((booking: any) => {
+          const bookingDate = new Date(booking.appointmentDate);
+          return (
+            booking.stylistId === stylistId &&
+            bookingDate.toDateString() === appointmentDate.toDateString() &&
+            booking.appointmentTime === time &&
+            booking.status !== "cancelled"
+          );
+        });
+
+        if (hasConflict) {
+          return res.status(409).json({ 
+            error: "Este horario ya no está disponible. Por favor selecciona otro horario." 
+          });
+        }
+      }
 
       // Validate client info
       const validatedClient = insertClientSchema.parse(clientInfo);
@@ -338,8 +363,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Stylist availability management (public read for booking, admin write)
   app.get("/api/public/stylists/:id/availability", async (req, res) => {
     try {
-      const availability = await storage.getStylistAvailability(req.params.id);
-      res.json(availability);
+      const stylistId = req.params.id;
+      const { date, salonId } = req.query;
+      
+      // Get base availability schedule
+      const availability = await storage.getStylistAvailability(stylistId);
+      
+      // If date and salonId are provided, filter out booked time slots
+      if (date && salonId) {
+        const appointmentDate = new Date(date as string);
+        const allBookings = await storage.getBookingsBySalon(salonId as string);
+        
+        // Get bookings for this stylist on this date
+        const bookedSlots = allBookings
+          .filter((booking: any) => {
+            const bookingDate = new Date(booking.appointmentDate);
+            return (
+              booking.stylistId === stylistId &&
+              bookingDate.toDateString() === appointmentDate.toDateString() &&
+              booking.status !== "cancelled"
+            );
+          })
+          .map((booking: any) => booking.appointmentTime);
+        
+        res.json({ 
+          availability, 
+          bookedSlots 
+        });
+      } else {
+        res.json(availability);
+      }
     } catch (error) {
       console.error("Error fetching stylist availability:", error);
       res.status(500).json({ error: "Failed to fetch stylist availability" });
@@ -363,6 +416,108 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error setting stylist availability:", error);
       res.status(400).json({ error: "Failed to set stylist availability" });
+    }
+  });
+
+  // ===== OBJECT STORAGE ROUTES (Protected file uploads, auth required) =====
+  
+  // Get presigned upload URL for object entity
+  app.post("/api/objects/upload", isAuthenticated, async (req, res) => {
+    try {
+      const objectStorageService = new ObjectStorageService();
+      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+      res.json({ uploadURL });
+    } catch (error) {
+      console.error("Error getting upload URL:", error);
+      res.status(500).json({ error: "Failed to get upload URL" });
+    }
+  });
+
+  // Serve uploaded images with ACL check
+  app.get("/objects/:objectPath(*)", isAuthenticated, async (req, res) => {
+    const userId = req.user?.claims?.sub;
+    const objectStorageService = new ObjectStorageService();
+    try {
+      const objectFile = await objectStorageService.getObjectEntityFile(req.path);
+      const canAccess = await objectStorageService.canAccessObjectEntity({
+        objectFile,
+        userId: userId,
+        requestedPermission: ObjectPermission.READ,
+      });
+      if (!canAccess) {
+        return res.sendStatus(401);
+      }
+      objectStorageService.downloadObject(objectFile, res);
+    } catch (error) {
+      console.error("Error checking object access:", error);
+      if (error instanceof ObjectNotFoundError) {
+        return res.sendStatus(404);
+      }
+      return res.sendStatus(500);
+    }
+  });
+
+  // Save service image URL after upload
+  app.put("/api/admin/services/:id/image", isAuthenticated, requireSalonMembership, requireRole("owner", "admin"), async (req, res) => {
+    try {
+      if (!req.body.imageUrl) {
+        return res.status(400).json({ error: "imageUrl is required" });
+      }
+
+      const userId = req.user?.claims?.sub;
+      const objectStorageService = new ObjectStorageService();
+      
+      // Set ACL policy for the uploaded image (public visibility for service images)
+      const objectPath = await objectStorageService.trySetObjectEntityAclPolicy(
+        req.body.imageUrl,
+        {
+          owner: userId,
+          visibility: "public",
+        }
+      );
+
+      // Update service with image URL
+      const service = await storage.updateService(req.params.id, req.salon!.id, { imageUrl: objectPath });
+      if (!service) {
+        return res.status(404).json({ error: "Service not found or access denied" });
+      }
+
+      res.json({ objectPath, service });
+    } catch (error) {
+      console.error("Error setting service image:", error);
+      res.status(500).json({ error: "Failed to set service image" });
+    }
+  });
+
+  // Save stylist image URL after upload
+  app.put("/api/admin/stylists/:id/image", isAuthenticated, requireSalonMembership, requireRole("owner", "admin"), async (req, res) => {
+    try {
+      if (!req.body.imageUrl) {
+        return res.status(400).json({ error: "imageUrl is required" });
+      }
+
+      const userId = req.user?.claims?.sub;
+      const objectStorageService = new ObjectStorageService();
+      
+      // Set ACL policy for the uploaded image (public visibility for stylist images)
+      const objectPath = await objectStorageService.trySetObjectEntityAclPolicy(
+        req.body.imageUrl,
+        {
+          owner: userId,
+          visibility: "public",
+        }
+      );
+
+      // Update stylist with image URL
+      const stylist = await storage.updateStylist(req.params.id, req.salon!.id, { imageUrl: objectPath });
+      if (!stylist) {
+        return res.status(404).json({ error: "Stylist not found or access denied" });
+      }
+
+      res.json({ objectPath, stylist });
+    } catch (error) {
+      console.error("Error setting stylist image:", error);
+      res.status(500).json({ error: "Failed to set stylist image" });
     }
   });
 
