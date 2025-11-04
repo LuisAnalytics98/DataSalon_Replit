@@ -36,12 +36,12 @@ export default function Employee() {
 
   // Fetch stylists
   const { data: stylists = [], isLoading: stylistsLoading } = useQuery<Stylist[]>({
-    queryKey: ["/api/stylists"],
+    queryKey: ["/api/admin/stylists"],
   });
 
   // Fetch bookings
   const { data: bookings = [], isLoading: bookingsLoading } = useQuery<BookingWithDetails[]>({
-    queryKey: ["/api/bookings"],
+    queryKey: ["/api/admin/bookings"],
   });
 
   // Filter bookings by selected stylist

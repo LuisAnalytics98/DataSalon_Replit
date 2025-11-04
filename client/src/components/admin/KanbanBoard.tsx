@@ -144,7 +144,7 @@ export default function KanbanBoard() {
   const [activeId, setActiveId] = useState<string | null>(null);
 
   const { data: bookings = [], isLoading } = useQuery<BookingWithDetails[]>({
-    queryKey: ["/api/bookings"],
+    queryKey: ["/api/admin/bookings"],
   });
 
   const updateStatusMutation = useMutation({
@@ -153,7 +153,7 @@ export default function KanbanBoard() {
       return await response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/bookings"] });
     },
   });
 

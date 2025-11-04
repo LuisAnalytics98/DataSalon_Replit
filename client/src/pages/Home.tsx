@@ -47,14 +47,17 @@ export default function Home() {
   }>({});
   const [confirmedBooking, setConfirmedBooking] = useState<BookingWithDetails | null>(null);
 
+  // Salon slug (hardcoded for now, will be dynamic when multi-salon support is added)
+  const salonSlug = "demo-salon";
+
   // Fetch services from backend
   const { data: services = [], isLoading: servicesLoading } = useQuery<Service[]>({
-    queryKey: ["/api/services"],
+    queryKey: [`/api/public/${salonSlug}/services`],
   });
 
   // Fetch stylists from backend
   const { data: stylists = [], isLoading: stylistsLoading } = useQuery<Stylist[]>({
-    queryKey: ["/api/stylists"],
+    queryKey: [`/api/public/${salonSlug}/stylists`],
   });
 
   // Create booking mutation
@@ -66,12 +69,12 @@ export default function Home() {
       date: Date;
       time: string;
     }) => {
-      const response = await apiRequest("POST", "/api/bookings", data);
+      const response = await apiRequest("POST", `/api/public/${salonSlug}/bookings`, data);
       return await response.json() as BookingWithDetails;
     },
     onSuccess: (data) => {
       setConfirmedBooking(data);
-      queryClient.invalidateQueries({ queryKey: ["/api/bookings"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/public/${salonSlug}/bookings`] });
     },
   });
 

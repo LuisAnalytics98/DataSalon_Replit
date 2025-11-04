@@ -45,19 +45,19 @@ export default function StylistsManagement() {
   const { toast } = useToast();
 
   const { data: stylists = [], isLoading } = useQuery<Stylist[]>({
-    queryKey: ["/api/stylists"],
+    queryKey: ["/api/admin/stylists"],
   });
 
   const { data: services = [] } = useQuery<Service[]>({
-    queryKey: ["/api/services"],
+    queryKey: ["/api/admin/services"],
   });
 
   const { data: stylistAvailability = [] } = useQuery<StylistAvailability[]>({
-    queryKey: ["/api/stylists", availabilityStylist?.id, "availability"],
+    queryKey: ["/api/public/stylists", availabilityStylist?.id, "availability"],
     enabled: !!availabilityStylist,
     queryFn: async () => {
       if (!availabilityStylist) return [];
-      const response = await fetch(`/api/stylists/${availabilityStylist.id}/availability`);
+      const response = await fetch(`/api/public/stylists/${availabilityStylist.id}/availability`);
       if (!response.ok) throw new Error("Failed to fetch availability");
       return await response.json();
     },
@@ -69,7 +69,7 @@ export default function StylistsManagement() {
       return await response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/stylists"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stylists"] });
       setIsDialogOpen(false);
       resetForm();
       toast({
@@ -92,7 +92,7 @@ export default function StylistsManagement() {
       return await response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/stylists"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stylists"] });
       setIsDialogOpen(false);
       resetForm();
       toast({
@@ -115,7 +115,7 @@ export default function StylistsManagement() {
       return await response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/stylists"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stylists"] });
       toast({
         title: "Estilista eliminado",
         description: "El estilista se ha eliminado exitosamente.",
@@ -136,7 +136,7 @@ export default function StylistsManagement() {
       return await response.json();
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/stylists", variables.stylistId, "availability"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/public/stylists", variables.stylistId, "availability"] });
       setIsAvailabilityDialogOpen(false);
       toast({
         title: "Horarios actualizados",

@@ -25,7 +25,7 @@ export default function ServicesManagement() {
   const { toast } = useToast();
 
   const { data: services = [], isLoading } = useQuery<Service[]>({
-    queryKey: ["/api/services"],
+    queryKey: ["/api/admin/services"],
   });
 
   const createMutation = useMutation({
@@ -34,7 +34,7 @@ export default function ServicesManagement() {
       return await response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/services"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/services"] });
       setIsDialogOpen(false);
       resetForm();
       toast({
@@ -57,7 +57,7 @@ export default function ServicesManagement() {
       return await response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/services"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/services"] });
       setIsDialogOpen(false);
       resetForm();
       toast({
@@ -80,7 +80,7 @@ export default function ServicesManagement() {
       return await response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/services"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/services"] });
       toast({
         title: "Servicio eliminado",
         description: "El servicio se ha eliminado exitosamente.",

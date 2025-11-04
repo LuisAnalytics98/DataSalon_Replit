@@ -20,11 +20,11 @@ export default function DateTimeSelection({ onContinue, initialDate, initialTime
 
   // Fetch stylist availability
   const { data: availability = [] } = useQuery<StylistAvailability[]>({
-    queryKey: ["/api/stylists", stylistId, "availability"],
+    queryKey: ["/api/public/stylists", stylistId, "availability"],
     enabled: !!stylistId && stylistId !== "any",
     queryFn: async () => {
       if (!stylistId || stylistId === "any") return [];
-      const response = await fetch(`/api/stylists/${stylistId}/availability`);
+      const response = await fetch(`/api/public/stylists/${stylistId}/availability`);
       if (!response.ok) throw new Error("Failed to fetch availability");
       return await response.json();
     },
