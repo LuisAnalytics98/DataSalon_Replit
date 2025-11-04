@@ -36,6 +36,7 @@ export const bookings = pgTable("bookings", {
   stylistId: varchar("stylist_id").references(() => stylists.id),
   appointmentDate: timestamp("appointment_date").notNull(),
   appointmentTime: text("appointment_time").notNull(),
+  status: text("status").notNull().default("backlog"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -44,18 +45,31 @@ export const insertClientSchema = createInsertSchema(clients).omit({
   createdAt: true,
 });
 
+export const insertServiceSchema = createInsertSchema(services);
+
+export const insertStylistSchema = createInsertSchema(stylists);
+
 export const insertBookingSchema = createInsertSchema(bookings).omit({
   id: true,
   bookingReference: true,
   createdAt: true,
+  status: true,
+});
+
+export const updateBookingStatusSchema = z.object({
+  id: z.string(),
+  status: z.enum(["backlog", "for_today", "in_progress", "done", "cancelled"]),
 });
 
 export type Client = typeof clients.$inferSelect;
 export type InsertClient = z.infer<typeof insertClientSchema>;
 export type Service = typeof services.$inferSelect;
+export type InsertService = z.infer<typeof insertServiceSchema>;
 export type Stylist = typeof stylists.$inferSelect;
+export type InsertStylist = z.infer<typeof insertStylistSchema>;
 export type Booking = typeof bookings.$inferSelect;
 export type InsertBooking = z.infer<typeof insertBookingSchema>;
+export type UpdateBookingStatus = z.infer<typeof updateBookingStatusSchema>;
 
 export interface BookingWithDetails extends Booking {
   client: Client;

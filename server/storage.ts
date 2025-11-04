@@ -5,7 +5,10 @@ import {
   type InsertBooking,
   type BookingWithDetails,
   type Service,
+  type InsertService,
   type Stylist,
+  type InsertStylist,
+  type UpdateBookingStatus,
   clients,
   bookings,
   services,
@@ -22,17 +25,24 @@ export interface IStorage {
   // Services
   getAllServices(): Promise<Service[]>;
   getServiceById(id: string): Promise<Service | undefined>;
+  createService(service: InsertService): Promise<Service>;
+  updateService(id: string, service: Partial<InsertService>): Promise<Service | undefined>;
+  deleteService(id: string): Promise<boolean>;
   seedServices(): Promise<void>;
   
   // Stylists
   getAllStylists(): Promise<Stylist[]>;
   getStylistById(id: string): Promise<Stylist | undefined>;
+  createStylist(stylist: InsertStylist): Promise<Stylist>;
+  updateStylist(id: string, stylist: Partial<InsertStylist>): Promise<Stylist | undefined>;
+  deleteStylist(id: string): Promise<boolean>;
   seedStylists(): Promise<void>;
   
   // Bookings
   createBooking(booking: InsertBooking): Promise<Booking>;
   getBookingById(id: string): Promise<BookingWithDetails | undefined>;
   getAllBookings(): Promise<BookingWithDetails[]>;
+  updateBookingStatus(data: UpdateBookingStatus): Promise<Booking | undefined>;
 }
 
 export class DbStorage implements IStorage {
@@ -55,6 +65,24 @@ export class DbStorage implements IStorage {
   async getServiceById(id: string): Promise<Service | undefined> {
     const [service] = await db.select().from(services).where(eq(services.id, id));
     return service;
+  }
+
+  async createService(insertService: InsertService): Promise<Service> {
+    const [service] = await db.insert(services).values(insertService).returning();
+    return service;
+  }
+
+  async updateService(id: string, updateData: Partial<InsertService>): Promise<Service | undefined> {
+    const [service] = await db.update(services)
+      .set(updateData)
+      .where(eq(services.id, id))
+      .returning();
+    return service;
+  }
+
+  async deleteService(id: string): Promise<boolean> {
+    const result = await db.delete(services).where(eq(services.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
   }
 
   async seedServices(): Promise<void> {
@@ -94,6 +122,24 @@ export class DbStorage implements IStorage {
   async getStylistById(id: string): Promise<Stylist | undefined> {
     const [stylist] = await db.select().from(stylists).where(eq(stylists.id, id));
     return stylist;
+  }
+
+  async createStylist(insertStylist: InsertStylist): Promise<Stylist> {
+    const [stylist] = await db.insert(stylists).values(insertStylist).returning();
+    return stylist;
+  }
+
+  async updateStylist(id: string, updateData: Partial<InsertStylist>): Promise<Stylist | undefined> {
+    const [stylist] = await db.update(stylists)
+      .set(updateData)
+      .where(eq(stylists.id, id))
+      .returning();
+    return stylist;
+  }
+
+  async deleteStylist(id: string): Promise<boolean> {
+    const result = await db.delete(stylists).where(eq(stylists.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
   }
 
   async seedStylists(): Promise<void> {
@@ -184,6 +230,14 @@ export class DbStorage implements IStorage {
         service: r.service!,
         stylist: r.stylist,
       }));
+  }
+
+  async updateBookingStatus(data: UpdateBookingStatus): Promise<Booking | undefined> {
+    const [booking] = await db.update(bookings)
+      .set({ status: data.status })
+      .where(eq(bookings.id, data.id))
+      .returning();
+    return booking;
   }
 }
 
