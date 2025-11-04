@@ -18,6 +18,17 @@ This is a Spanish-language premium multi-tenant salon booking application that a
 
 ## Recent Changes
 
+**November 4, 2025 - Image Upload and Booking Conflict Prevention:**
+- Integrated Replit Object Storage for service and stylist images
+- Added `imageUrl` field to `services` and `stylists` tables
+- Created `ObjectUploader` component with file selection, progress tracking, and upload functionality
+- Admin panels now include "Upload Image" buttons for services and stylists
+- Created upload endpoints: `POST /api/admin/services/:id/image` and `POST /api/admin/stylists/:id/image`
+- Booking pages display uploaded images with fallback to placeholder icons (ImageIcon/User)
+- Implemented time slot conflict prevention: booking creation validates availability and returns 409 Conflict if slot already booked
+- Availability endpoint excludes booked time slots (cancelled bookings not counted as conflicts)
+- End-to-end tested: upload UI verified in admin panel, image display confirmed in booking flow
+
 **November 4, 2025 - Booking Flow Update:**
 - Removed "Cualquier Estilista Disponible" option from stylist selection page
 - Clients must now select a specific stylist to proceed with booking
@@ -112,10 +123,12 @@ Multi-tenant API architecture with clear separation between public and protected
 - `POST /api/admin/services` - Create service
 - `PATCH /api/admin/services/:id` - Update service
 - `DELETE /api/admin/services/:id` - Delete service
+- `POST /api/admin/services/:id/image` - Upload image for service
 - `GET /api/admin/stylists` - List salon stylists (scoped to user's salon)
 - `POST /api/admin/stylists` - Create stylist
 - `PATCH /api/admin/stylists/:id` - Update stylist
 - `DELETE /api/admin/stylists/:id` - Delete stylist
+- `POST /api/admin/stylists/:id/image` - Upload image for stylist
 - `POST /api/admin/stylists/:id/availability` - Update stylist availability
 - `GET /api/admin/users` - List users assigned to salon (for stylist-user linking)
 - `GET /api/admin/bookings` - List bookings (scoped to user's salon)
@@ -165,8 +178,10 @@ Multi-tenant API architecture with clear separation between public and protected
 *Salon-Scoped Data:*
 - `clients` - Customer information (name, email, phone, notes) - scoped to salon
 - `services` - Salon services with pricing and duration - scoped to salon via `salonId`
+  - Includes optional `imageUrl` field for uploaded service images
 - `stylists` - Staff profiles with specialties and ratings - scoped to salon via `salonId`
   - Includes optional `userId` field to link stylist profiles to user accounts for system access
+  - Includes optional `imageUrl` field for uploaded stylist profile photos
 - `stylist_availability` - Weekly schedules - linked to stylists
 - `bookings` - Appointment records - scoped to salon via `salonId`
 
@@ -215,6 +230,12 @@ Multi-tenant API architecture with clear separation between public and protected
 - express-session - Session middleware with PostgreSQL persistence
 - connect-pg-simple - PostgreSQL session store for secure session management
 - Passport.js - Authentication middleware (configured for future extensibility)
+
+**Object Storage:**
+- @google-cloud/storage - Google Cloud Storage client for Replit Object Storage integration
+- Uppy Core & AWS S3 plugin - File upload library with progress tracking and S3-compatible uploads
+- Custom ObjectUploader component - React component providing file selection, upload progress, and completion handling
+- Replit Object Storage integration provides secure cloud storage for service and stylist images
 
 **Fonts:**
 - Google Fonts API - Playfair Display and Inter font families loaded via CDN
