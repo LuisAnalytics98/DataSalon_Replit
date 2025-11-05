@@ -7,6 +7,7 @@ import Header from "@/components/Header";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { BookingCompletionDialog } from "@/components/employee/BookingCompletionDialog";
 import type { BookingWithDetails, Stylist } from "@shared/schema";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 
@@ -33,6 +34,8 @@ interface CalendarEvent {
 export default function Employee() {
   const [selectedStylistId, setSelectedStylistId] = useState<string>("all");
   const [calendarView, setCalendarView] = useState<View>("month");
+  const [selectedBooking, setSelectedBooking] = useState<BookingWithDetails | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   // Fetch stylists
   const { data: stylists = [], isLoading: stylistsLoading } = useQuery<Stylist[]>({
@@ -181,6 +184,10 @@ export default function Employee() {
                 view={calendarView}
                 onView={setCalendarView}
                 eventPropGetter={eventStyleGetter}
+                onSelectEvent={(event) => {
+                  setSelectedBooking(event.resource);
+                  setDialogOpen(true);
+                }}
                 culture="es"
                 messages={{
                   today: "Hoy",
@@ -227,6 +234,12 @@ export default function Employee() {
             </div>
           </div>
         </Card>
+
+        <BookingCompletionDialog
+          booking={selectedBooking}
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+        />
       </div>
     </div>
   );
