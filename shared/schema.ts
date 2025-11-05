@@ -85,6 +85,18 @@ export const bookings = pgTable("bookings", {
   appointmentDate: timestamp("appointment_date").notNull(),
   appointmentTime: text("appointment_time").notNull(),
   status: text("status").notNull().default("backlog"),
+  finalPrice: integer("final_price"), // Final price set by employee upon completion
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const salonInquiries = pgTable("salon_inquiries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone").notNull(),
+  salonName: text("salon_name").notNull(),
+  message: text("message"),
+  status: text("status").notNull().default("pending"), // pending, contacted, converted, rejected
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -133,9 +145,20 @@ export const insertStylistAvailabilitySchema = createInsertSchema(stylistAvailab
   id: true,
 });
 
+export const insertSalonInquirySchema = createInsertSchema(salonInquiries).omit({
+  id: true,
+  createdAt: true,
+  status: true,
+});
+
 export const updateBookingStatusSchema = z.object({
   id: z.string(),
   status: z.enum(["backlog", "for_today", "in_progress", "done", "cancelled"]),
+});
+
+export const updateBookingCompletionSchema = z.object({
+  status: z.enum(["in_progress", "done", "cancelled"]),
+  finalPrice: z.number().int().positive().optional(),
 });
 
 // Types
@@ -163,7 +186,11 @@ export type InsertBooking = z.infer<typeof insertBookingSchema>;
 export type StylistAvailability = typeof stylistAvailability.$inferSelect;
 export type InsertStylistAvailability = z.infer<typeof insertStylistAvailabilitySchema>;
 
+export type SalonInquiry = typeof salonInquiries.$inferSelect;
+export type InsertSalonInquiry = z.infer<typeof insertSalonInquirySchema>;
+
 export type UpdateBookingStatus = z.infer<typeof updateBookingStatusSchema>;
+export type UpdateBookingCompletion = z.infer<typeof updateBookingCompletionSchema>;
 
 export interface BookingWithDetails extends Booking {
   client: Client;

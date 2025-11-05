@@ -11,6 +11,7 @@ import {
   type StylistAvailability,
   type InsertStylistAvailability,
   type UpdateBookingStatus,
+  type UpdateBookingCompletion,
   type User,
   type UpsertUser,
   type Salon,
@@ -18,6 +19,8 @@ import {
   type SalonUser,
   type InsertSalonUser,
   type UserWithSalon,
+  type SalonInquiry,
+  type InsertSalonInquiry,
   clients,
   bookings,
   services,
@@ -26,6 +29,7 @@ import {
   users,
   salons,
   salonUsers,
+  salonInquiries,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and } from "drizzle-orm";
@@ -76,6 +80,7 @@ export interface IStorage {
   getBookingById(id: string): Promise<BookingWithDetails | undefined>;
   getBookingsBySalon(salonId: string): Promise<BookingWithDetails[]>;
   updateBookingStatus(data: UpdateBookingStatus, salonId: string): Promise<Booking | undefined>;
+  updateBookingCompletion(id: string, salonId: string, data: UpdateBookingCompletion): Promise<Booking | undefined>;
   
   // Stylist Availability
   getStylistAvailability(stylistId: string): Promise<StylistAvailability[]>;
@@ -83,6 +88,11 @@ export interface IStorage {
   updateStylistAvailability(id: number, availability: Partial<InsertStylistAvailability>): Promise<StylistAvailability | undefined>;
   deleteStylistAvailability(id: number): Promise<boolean>;
   setStylistAvailability(stylistId: string, salonId: string, availability: InsertStylistAvailability[]): Promise<StylistAvailability[]>;
+  
+  // Salon Inquiries
+  createSalonInquiry(inquiry: InsertSalonInquiry): Promise<SalonInquiry>;
+  getAllSalonInquiries(): Promise<SalonInquiry[]>;
+  updateSalonInquiryStatus(id: string, status: string): Promise<SalonInquiry | undefined>;
 }
 
 export class DbStorage implements IStorage {
@@ -341,6 +351,17 @@ export class DbStorage implements IStorage {
     return booking;
   }
 
+  async updateBookingCompletion(id: string, salonId: string, data: UpdateBookingCompletion): Promise<Booking | undefined> {
+    const [booking] = await db.update(bookings)
+      .set({ 
+        status: data.status,
+        finalPrice: data.finalPrice,
+      })
+      .where(and(eq(bookings.id, id), eq(bookings.salonId, salonId)))
+      .returning();
+    return booking;
+  }
+
   // Stylist Availability
   async getStylistAvailability(stylistId: string): Promise<StylistAvailability[]> {
     return await db.select()
@@ -389,6 +410,24 @@ export class DbStorage implements IStorage {
       .values(availabilityList)
       .returning();
     return inserted;
+  }
+
+  // Salon Inquiries
+  async createSalonInquiry(inquiry: InsertSalonInquiry): Promise<SalonInquiry> {
+    const [salonInquiry] = await db.insert(salonInquiries).values(inquiry).returning();
+    return salonInquiry;
+  }
+
+  async getAllSalonInquiries(): Promise<SalonInquiry[]> {
+    return await db.select().from(salonInquiries);
+  }
+
+  async updateSalonInquiryStatus(id: string, status: string): Promise<SalonInquiry | undefined> {
+    const [inquiry] = await db.update(salonInquiries)
+      .set({ status })
+      .where(eq(salonInquiries.id, id))
+      .returning();
+    return inquiry;
   }
 }
 

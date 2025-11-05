@@ -10,8 +10,10 @@ import {
   insertStylistSchema,
   insertStylistAvailabilitySchema,
   updateBookingStatusSchema,
+  updateBookingCompletionSchema,
   insertSalonSchema,
   insertSalonUserSchema,
+  insertSalonInquirySchema,
 } from "@shared/schema";
 import type { Salon } from "@shared/schema";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
@@ -203,6 +205,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Create a salon inquiry (public - landing page contact form)
+  app.post("/api/public/inquiries", async (req, res) => {
+    try {
+      const validatedInquiry = insertSalonInquirySchema.parse(req.body);
+      const inquiry = await storage.createSalonInquiry(validatedInquiry);
+      res.json(inquiry);
+    } catch (error) {
+      console.error("Error creating inquiry:", error);
+      res.status(400).json({ error: "Failed to create inquiry" });
+    }
+  });
+
   // ===== ADMIN/EMPLOYEE ROUTES (Auth required, salon-scoped) =====
 
   // Get salon data for current user
@@ -255,6 +269,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating booking status:", error);
       res.status(400).json({ error: "Failed to update booking status" });
+    }
+  });
+
+  // Update booking completion with final price (employee/admin)
+  app.patch("/api/admin/bookings/:id/completion", isAuthenticated, requireSalonMembership, async (req, res) => {
+    try {
+      const validatedData = updateBookingCompletionSchema.parse(req.body);
+      
+      const booking = await storage.updateBookingCompletion(req.params.id, req.salon!.id, validatedData);
+      if (!booking) {
+        return res.status(404).json({ error: "Booking not found or access denied" });
+      }
+      
+      res.json(booking);
+    } catch (error) {
+      console.error("Error updating booking completion:", error);
+      res.status(400).json({ error: "Failed to update booking completion" });
     }
   });
 
