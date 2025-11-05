@@ -107,12 +107,12 @@ export default function Landing() {
           </nav>
 
           <div className="flex items-center gap-3">
-            <a href="/auth/login?returnTo=/employee">
+            <a href="/api/login?returnTo=/employee">
               <Button variant="ghost" size="sm" data-testid="button-employee-login">
                 Panel Empleado
               </Button>
             </a>
-            <a href="/auth/login?returnTo=/admin">
+            <a href="/api/login?returnTo=/admin">
               <Button variant="ghost" size="sm" data-testid="button-admin-login">
                 Panel Admin
               </Button>
