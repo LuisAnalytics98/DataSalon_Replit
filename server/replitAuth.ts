@@ -34,6 +34,9 @@ export function getSession() {
     ttl: sessionTtl,
     tableName: "sessions",
   });
+  
+  const isProduction = process.env.NODE_ENV === 'production';
+  
   return session({
     secret: process.env.SESSION_SECRET!,
     store: sessionStore,
@@ -41,7 +44,8 @@ export function getSession() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: true,
+      secure: isProduction, // Only require HTTPS in production
+      sameSite: 'lax',
       maxAge: sessionTtl,
     },
   });
@@ -114,34 +118,63 @@ export async function setupAuth(app: Express) {
   app.get("/api/login", (req, res, next) => {
     // Save returnTo parameter to session for post-login redirect
     if (req.query.returnTo && typeof req.query.returnTo === 'string') {
-      req.session.returnTo = req.query.returnTo;
+      const returnTo = req.query.returnTo as string;
+      console.log('[AUTH] Setting returnTo in session:', returnTo);
+      req.session.returnTo = returnTo;
+      // Explicitly save the session before redirecting to OIDC
+      req.session.save((err) => {
+        if (err) {
+          console.error('[AUTH] Error saving session:', err);
+          return next(err);
+        }
+        console.log('[AUTH] Session saved successfully with returnTo:', req.session.returnTo);
+        
+        ensureStrategy(req.hostname);
+        passport.authenticate(`replitauth:${req.hostname}`, {
+          prompt: "login consent",
+          scope: ["openid", "email", "profile", "offline_access"],
+        })(req, res, next);
+      });
+    } else {
+      ensureStrategy(req.hostname);
+      passport.authenticate(`replitauth:${req.hostname}`, {
+        prompt: "login consent",
+        scope: ["openid", "email", "profile", "offline_access"],
+      })(req, res, next);
     }
-    
-    ensureStrategy(req.hostname);
-    passport.authenticate(`replitauth:${req.hostname}`, {
-      prompt: "login consent",
-      scope: ["openid", "email", "profile", "offline_access"],
-    })(req, res, next);
   });
 
   app.get("/api/callback", (req, res, next) => {
+    console.log('[AUTH] Callback hit, session ID:', req.sessionID);
+    console.log('[AUTH] Session returnTo before auth:', req.session.returnTo);
+    
+    // Save returnTo BEFORE passport processes the session
+    const savedReturnTo = req.session.returnTo;
+    console.log('[AUTH] Saved returnTo to variable:', savedReturnTo);
+    
     ensureStrategy(req.hostname);
     passport.authenticate(`replitauth:${req.hostname}`, (err: any, user: any) => {
       if (err) {
+        console.error('[AUTH] Authentication error:', err);
         return next(err);
       }
       if (!user) {
+        console.log('[AUTH] No user, redirecting to login');
         return res.redirect("/api/login");
       }
       
       req.logIn(user, (err) => {
         if (err) {
+          console.error('[AUTH] Login error:', err);
           return next(err);
         }
         
-        // Get the returnTo path from session and clear it
-        const returnTo = req.session.returnTo || "/";
-        delete req.session.returnTo;
+        console.log('[AUTH] After logIn - session returnTo:', req.session.returnTo);
+        console.log('[AUTH] After logIn - savedReturnTo variable:', savedReturnTo);
+        
+        // Use the saved returnTo value (session might have been regenerated)
+        const returnTo = savedReturnTo || "/";
+        console.log('[AUTH] Redirecting to:', returnTo);
         
         return res.redirect(returnTo);
       });
