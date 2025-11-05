@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -33,7 +33,7 @@ import type { BookingWithDetails } from "@shared/schema";
 
 const bookingCompletionFormSchema = z.object({
   status: z.enum(["in_progress", "done", "cancelled"]),
-  finalPrice: z.string().optional(),
+  finalPrice: z.coerce.number().nonnegative().optional().or(z.literal("")),
 });
 
 type BookingCompletionFormValues = z.infer<typeof bookingCompletionFormSchema>;
@@ -54,15 +54,25 @@ export function BookingCompletionDialog({
   const form = useForm<BookingCompletionFormValues>({
     resolver: zodResolver(bookingCompletionFormSchema),
     defaultValues: {
-      status: booking?.status as "in_progress" | "done" | "cancelled" || "in_progress",
-      finalPrice: booking?.finalPrice?.toString() || "",
+      status: "in_progress",
+      finalPrice: "",
     },
   });
 
+  // Reset form when booking changes
+  useEffect(() => {
+    if (booking && open) {
+      form.reset({
+        status: booking.status as "in_progress" | "done" | "cancelled",
+        finalPrice: booking.finalPrice || "",
+      });
+    }
+  }, [booking, open, form]);
+
   const updateMutation = useMutation({
     mutationFn: async (data: BookingCompletionFormValues) => {
-      const finalPriceNum = data.finalPrice && data.finalPrice !== "" 
-        ? parseInt(data.finalPrice) 
+      const finalPriceNum = typeof data.finalPrice === "number" 
+        ? data.finalPrice 
         : undefined;
 
       const response = await fetch(`/api/admin/bookings/${booking?.id}/completion`, {
