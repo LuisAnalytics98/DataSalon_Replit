@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { Salon, InsertSalon, User, SalonUser } from "@shared/schema";
+import type { Salon, InsertSalon, User, SalonUser, SalonInquiry } from "@shared/schema";
 import Header from "@/components/Header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,8 +10,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, Users } from "lucide-react";
+import { Plus, Pencil, Trash2, Users, Mail } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { format } from "date-fns";
 
 export default function SuperAdmin() {
   const [isSalonDialogOpen, setIsSalonDialogOpen] = useState(false);
@@ -39,6 +40,11 @@ export default function SuperAdmin() {
   const { data: salonUsers = [] } = useQuery<Array<SalonUser & { user: User }>>({
     queryKey: ["/api/superadmin/salons", selectedSalonId, "users"],
     enabled: !!selectedSalonId,
+  });
+
+  // Fetch salon inquiries
+  const { data: inquiries = [] } = useQuery<SalonInquiry[]>({
+    queryKey: ["/api/superadmin/inquiries"],
   });
 
   // Create salon mutation
@@ -287,6 +293,65 @@ export default function SuperAdmin() {
                           <Trash2 className="w-4 h-4 mr-1" />
                           Eliminar
                         </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Salon Inquiries */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Mail className="w-5 h-5 text-primary" />
+              <div>
+                <CardTitle>Solicitudes de Información</CardTitle>
+                <CardDescription>Consultas de salones interesados</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {inquiries.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                No hay solicitudes de información.
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {inquiries.map((inquiry) => (
+                  <Card key={inquiry.id} data-testid={`card-inquiry-${inquiry.id}`}>
+                    <CardContent className="pt-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-sm font-medium mb-1">Nombre del Salón</p>
+                          <p className="text-sm text-muted-foreground">{inquiry.salonName}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium mb-1">Persona de Contacto</p>
+                          <p className="text-sm text-muted-foreground">{inquiry.name}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium mb-1">Email</p>
+                          <p className="text-sm text-muted-foreground">{inquiry.email}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium mb-1">Teléfono</p>
+                          <p className="text-sm text-muted-foreground">{inquiry.phone}</p>
+                        </div>
+                        {inquiry.message && (
+                          <div className="md:col-span-2">
+                            <p className="text-sm font-medium mb-1">Mensaje</p>
+                            <p className="text-sm text-muted-foreground">{inquiry.message}</p>
+                          </div>
+                        )}
+                        <div className="md:col-span-2">
+                          <p className="text-sm font-medium mb-1">Recibido</p>
+                          <p className="text-sm text-muted-foreground">
+                            {format(new Date(inquiry.createdAt), "d 'de' MMMM 'de' yyyy 'a las' HH:mm")}
+                          </p>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>

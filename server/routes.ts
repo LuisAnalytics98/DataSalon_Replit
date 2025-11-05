@@ -289,6 +289,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get analytics for admin dashboard (admin/owner only)
+  app.get("/api/admin/analytics", isAuthenticated, requireSalonMembership, requireRole("owner", "admin"), async (req, res) => {
+    try {
+      const { startDate, endDate } = req.query;
+      const salonId = req.salon!.id;
+      
+      const analytics = await storage.getAnalytics(
+        salonId,
+        startDate ? new Date(startDate as string) : undefined,
+        endDate ? new Date(endDate as string) : undefined
+      );
+      
+      res.json(analytics);
+    } catch (error) {
+      console.error("Error fetching analytics:", error);
+      res.status(500).json({ error: "Failed to fetch analytics" });
+    }
+  });
+
   // Get services for user's salon
   app.get("/api/admin/services", isAuthenticated, requireSalonMembership, async (req, res) => {
     try {
@@ -651,6 +670,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error removing user from salon:", error);
       res.status(500).json({ error: "Failed to remove user from salon" });
+    }
+  });
+
+  // Get all salon inquiries
+  app.get("/api/superadmin/inquiries", isAuthenticated, requireSuperAdmin, async (req, res) => {
+    try {
+      const inquiries = await storage.getAllSalonInquiries();
+      res.json(inquiries);
+    } catch (error) {
+      console.error("Error fetching inquiries:", error);
+      res.status(500).json({ error: "Failed to fetch inquiries" });
     }
   });
 

@@ -4,7 +4,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import KanbanBoard from "@/components/admin/KanbanBoard";
 import ServicesManagement from "@/components/admin/ServicesManagement";
 import StylistsManagement from "@/components/admin/StylistsManagement";
-import { LayoutDashboard, Scissors, Users } from "lucide-react";
+import Analytics from "@/pages/Analytics";
+import { LayoutDashboard, Scissors, Users, TrendingUp } from "lucide-react";
 
 export default function Admin() {
   const [activeTab, setActiveTab] = useState("kanban");
@@ -24,11 +25,16 @@ export default function Admin() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-8" data-testid="admin-tabs">
+          <TabsList className="grid w-full grid-cols-4 mb-8" data-testid="admin-tabs">
             <TabsTrigger value="kanban" className="flex items-center gap-2" data-testid="tab-kanban">
               <LayoutDashboard className="w-4 h-4" />
               <span className="hidden sm:inline">Tablero de Reservas</span>
               <span className="sm:hidden">Reservas</span>
+            </TabsTrigger>
+            <TabsTrigger value="analytics" className="flex items-center gap-2" data-testid="tab-analytics">
+              <TrendingUp className="w-4 h-4" />
+              <span className="hidden sm:inline">Análisis</span>
+              <span className="sm:hidden">Análisis</span>
             </TabsTrigger>
             <TabsTrigger value="services" className="flex items-center gap-2" data-testid="tab-services">
               <Scissors className="w-4 h-4" />
@@ -44,6 +50,10 @@ export default function Admin() {
 
           <TabsContent value="kanban" className="mt-0">
             <KanbanBoard />
+          </TabsContent>
+
+          <TabsContent value="analytics" className="mt-0">
+            <Analytics />
           </TabsContent>
 
           <TabsContent value="services" className="mt-0">

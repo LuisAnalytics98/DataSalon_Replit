@@ -93,6 +93,9 @@ export interface IStorage {
   createSalonInquiry(inquiry: InsertSalonInquiry): Promise<SalonInquiry>;
   getAllSalonInquiries(): Promise<SalonInquiry[]>;
   updateSalonInquiryStatus(id: string, status: string): Promise<SalonInquiry | undefined>;
+  
+  // Analytics
+  getAnalytics(salonId: string, startDate?: Date, endDate?: Date): Promise<any>;
 }
 
 export class DbStorage implements IStorage {
@@ -428,6 +431,122 @@ export class DbStorage implements IStorage {
       .where(eq(salonInquiries.id, id))
       .returning();
     return inquiry;
+  }
+
+  // Analytics
+  async getAnalytics(salonId: string, startDate?: Date, endDate?: Date): Promise<any> {
+    // Fetch all bookings for the salon, optionally filtered by date range
+    let bookingsQuery = db
+      .select({
+        booking: bookings,
+        client: clients,
+        service: services,
+        stylist: stylists,
+      })
+      .from(bookings)
+      .leftJoin(clients, eq(bookings.clientId, clients.id))
+      .leftJoin(services, eq(bookings.serviceId, services.id))
+      .leftJoin(stylists, eq(bookings.stylistId, stylists.id))
+      .where(eq(bookings.salonId, salonId));
+    
+    const allBookings = await bookingsQuery;
+    
+    // Filter by date range if provided
+    const filteredBookings = allBookings.filter(row => {
+      if (!row.booking.date) return false;
+      const bookingDate = new Date(row.booking.date);
+      if (startDate && bookingDate < startDate) return false;
+      if (endDate && bookingDate > endDate) return false;
+      return true;
+    });
+
+    // Calculate total revenue (only completed bookings with finalPrice)
+    const totalRevenue = filteredBookings
+      .filter(row => row.booking.status === "done" && row.booking.finalPrice)
+      .reduce((sum, row) => sum + (row.booking.finalPrice || 0), 0);
+
+    // Count total bookings
+    const totalBookings = filteredBookings.length;
+
+    // Count completed bookings
+    const completedBookings = filteredBookings.filter(row => row.booking.status === "done").length;
+
+    // Average ticket size
+    const completedWithPrice = filteredBookings.filter(row => 
+      row.booking.status === "done" && row.booking.finalPrice
+    );
+    const averageTicket = completedWithPrice.length > 0
+      ? totalRevenue / completedWithPrice.length
+      : 0;
+
+    // Popular services (top 5)
+    const serviceStats: { [key: string]: { name: string; count: number; revenue: number } } = {};
+    filteredBookings.forEach(row => {
+      if (!row.service) return;
+      const serviceId = row.service.id;
+      if (!serviceStats[serviceId]) {
+        serviceStats[serviceId] = {
+          name: row.service.name,
+          count: 0,
+          revenue: 0,
+        };
+      }
+      serviceStats[serviceId].count++;
+      if (row.booking.status === "done" && row.booking.finalPrice) {
+        serviceStats[serviceId].revenue += row.booking.finalPrice;
+      }
+    });
+    const popularServices = Object.values(serviceStats)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+
+    // Stylist performance (top 5)
+    const stylistStats: { [key: string]: { name: string; bookings: number; revenue: number } } = {};
+    filteredBookings.forEach(row => {
+      if (!row.stylist) return;
+      const stylistId = row.stylist.id;
+      if (!stylistStats[stylistId]) {
+        stylistStats[stylistId] = {
+          name: row.stylist.name,
+          bookings: 0,
+          revenue: 0,
+        };
+      }
+      stylistStats[stylistId].bookings++;
+      if (row.booking.status === "done" && row.booking.finalPrice) {
+        stylistStats[stylistId].revenue += row.booking.finalPrice;
+      }
+    });
+    const topStylists = Object.values(stylistStats)
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 5);
+
+    // Revenue by service (for breakdown)
+    const revenueByService = Object.values(serviceStats)
+      .filter(s => s.revenue > 0)
+      .sort((a, b) => b.revenue - a.revenue);
+
+    // Status breakdown
+    const statusBreakdown = {
+      pending: filteredBookings.filter(row => row.booking.status === "pending").length,
+      confirmed: filteredBookings.filter(row => row.booking.status === "confirmed").length,
+      in_progress: filteredBookings.filter(row => row.booking.status === "in_progress").length,
+      done: filteredBookings.filter(row => row.booking.status === "done").length,
+      cancelled: filteredBookings.filter(row => row.booking.status === "cancelled").length,
+    };
+
+    return {
+      summary: {
+        totalRevenue,
+        totalBookings,
+        completedBookings,
+        averageTicket: Math.round(averageTicket),
+      },
+      popularServices,
+      topStylists,
+      revenueByService,
+      statusBreakdown,
+    };
   }
 }
 
