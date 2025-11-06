@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -11,9 +11,10 @@ interface DateTimeSelectionProps {
   initialDate?: Date;
   initialTime?: string;
   stylistId?: string | null;
+  salonSlug: string;
 }
 
-export default function DateTimeSelection({ onContinue, initialDate, initialTime, stylistId }: DateTimeSelectionProps) {
+export default function DateTimeSelection({ onContinue, initialDate, initialTime, stylistId, salonSlug }: DateTimeSelectionProps) {
   const [selectedDate, setSelectedDate] = useState<Date | null>(initialDate || null);
   const [selectedTime, setSelectedTime] = useState<string | null>(initialTime || null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -29,6 +30,21 @@ export default function DateTimeSelection({ onContinue, initialDate, initialTime
       return await response.json();
     },
   });
+
+  // Fetch booked slots for the selected date
+  const { data: bookedSlotsData } = useQuery<{ availability: StylistAvailability[], bookedSlots: string[] }>({
+    queryKey: ["/api/public/stylists", stylistId, "availability", selectedDate?.toISOString(), salonSlug],
+    enabled: !!stylistId && stylistId !== "any" && !!selectedDate,
+    queryFn: async () => {
+      if (!stylistId || stylistId === "any" || !selectedDate) return { availability: [], bookedSlots: [] };
+      const dateStr = selectedDate.toISOString().split('T')[0];
+      const response = await fetch(`/api/public/stylists/${stylistId}/availability?date=${dateStr}&salonSlug=${salonSlug}`);
+      if (!response.ok) throw new Error("Failed to fetch booked slots");
+      return await response.json();
+    },
+  });
+
+  const bookedSlots = bookedSlotsData?.bookedSlots || [];
 
   const timeSlots = [
     "9:00 AM", "9:30 AM", "10:00 AM", "10:30 AM", "11:00 AM", "11:30 AM",
@@ -139,8 +155,25 @@ export default function DateTimeSelection({ onContinue, initialDate, initialTime
     });
   }, [selectedDate, stylistId, availability, timeSlots]);
 
+  // Check if a time slot is booked
+  const isTimeSlotBooked = (timeSlot: string) => {
+    return bookedSlots.includes(timeSlot);
+  };
+
+  // Clear selected time if it becomes booked
+  useEffect(() => {
+    if (selectedTime && isTimeSlotBooked(selectedTime)) {
+      setSelectedTime(null);
+    }
+  }, [selectedTime, bookedSlots]);
+
   const handleContinue = () => {
     if (selectedDate && selectedTime) {
+      // Final check: ensure selected time is not booked
+      if (isTimeSlotBooked(selectedTime)) {
+        setSelectedTime(null);
+        return;
+      }
       onContinue(selectedDate, selectedTime);
     }
   };
@@ -232,21 +265,29 @@ export default function DateTimeSelection({ onContinue, initialDate, initialTime
               </div>
             ) : (
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 max-h-96 overflow-y-auto">
-                {availableTimeSlots.map((time) => (
-                  <button
-                    key={time}
-                    onClick={() => setSelectedTime(time)}
-                    className={cn(
-                      "py-3 px-4 rounded-lg text-sm font-medium transition-all hover-elevate",
-                      selectedTime === time
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-foreground"
-                    )}
-                    data-testid={`button-time-${time.replace(/\s/g, '-')}`}
-                  >
-                    {time}
-                  </button>
-                ))}
+                {availableTimeSlots.map((time) => {
+                  const isBooked = isTimeSlotBooked(time);
+                  return (
+                    <button
+                      key={time}
+                      onClick={() => !isBooked && setSelectedTime(time)}
+                      disabled={isBooked}
+                      className={cn(
+                        "py-3 px-4 rounded-lg text-sm font-medium transition-all",
+                        !isBooked && "hover-elevate cursor-pointer",
+                        isBooked && "cursor-not-allowed opacity-40 text-muted-foreground line-through",
+                        selectedTime === time && !isBooked
+                          ? "bg-primary text-primary-foreground"
+                          : !isBooked
+                          ? "bg-muted text-foreground"
+                          : "bg-muted/50"
+                      )}
+                      data-testid={`button-time-${time.replace(/\s/g, '-')}`}
+                    >
+                      {time}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </Card>

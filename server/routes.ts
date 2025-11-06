@@ -419,15 +419,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/public/stylists/:id/availability", async (req, res) => {
     try {
       const stylistId = req.params.id;
-      const { date, salonId } = req.query;
+      const { date, salonId, salonSlug } = req.query;
       
       // Get base availability schedule
       const availability = await storage.getStylistAvailability(stylistId);
       
-      // If date and salonId are provided, filter out booked time slots
-      if (date && salonId) {
+      // If date and salonId/salonSlug are provided, filter out booked time slots
+      if (date && (salonId || salonSlug)) {
         const appointmentDate = new Date(date as string);
-        const allBookings = await storage.getBookingsBySalon(salonId as string);
+        
+        // Get salonId from slug if needed
+        let resolvedSalonId = salonId as string;
+        if (!resolvedSalonId && salonSlug) {
+          const salon = await storage.getSalonBySlug(salonSlug as string);
+          if (!salon) {
+            return res.status(404).json({ error: "Salon not found" });
+          }
+          resolvedSalonId = salon.id;
+        }
+        
+        const allBookings = await storage.getBookingsBySalon(resolvedSalonId);
         
         // Get bookings for this stylist on this date
         const bookedSlots = allBookings

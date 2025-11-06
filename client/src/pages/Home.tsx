@@ -200,6 +200,7 @@ export default function Home() {
             initialDate={bookingData.date}
             initialTime={bookingData.time}
             stylistId={bookingData.stylistId}
+            salonSlug={salonSlug}
           />
         )}
 
