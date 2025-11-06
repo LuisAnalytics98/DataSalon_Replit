@@ -7,7 +7,7 @@ import Header from "@/components/Header";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { BookingCompletionDialog } from "@/components/employee/BookingCompletionDialog";
+import { BookingDetailsDialog } from "@/components/employee/BookingDetailsDialog";
 import type { BookingWithDetails, Stylist } from "@shared/schema";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 
@@ -235,7 +235,7 @@ export default function Employee() {
           </div>
         </Card>
 
-        <BookingCompletionDialog
+        <BookingDetailsDialog
           booking={selectedBooking}
           open={dialogOpen}
           onOpenChange={setDialogOpen}
