@@ -12,6 +12,7 @@ import { es } from "date-fns/locale";
 import { Calendar, Clock, User, Scissors } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { BookingCompletionDialog } from "@/components/employee/BookingCompletionDialog";
 
 const COLUMN_STATUSES = [
   { id: "backlog", label: "Pendientes", color: "bg-gray-500" },
@@ -27,9 +28,10 @@ interface BookingCardProps {
   booking: BookingWithDetails;
   isDragging?: boolean;
   columnId?: BookingStatus;
+  onBookingClick?: (booking: BookingWithDetails) => void;
 }
 
-function BookingCard({ booking, isDragging, columnId }: BookingCardProps) {
+function BookingCard({ booking, isDragging, columnId, onBookingClick }: BookingCardProps) {
   const {
     attributes,
     listeners,
@@ -55,6 +57,10 @@ function BookingCard({ booking, isDragging, columnId }: BookingCardProps) {
       {...listeners}
       className="mb-2 cursor-move hover-elevate active-elevate-2"
       data-testid={`booking-card-${booking.id}`}
+      onClick={(e) => {
+        e.stopPropagation();
+        onBookingClick?.(booking);
+      }}
     >
       <CardContent className="p-4">
         <div className="space-y-2">
@@ -101,9 +107,10 @@ interface DroppableColumnProps {
   label: string;
   color: string;
   bookings: BookingWithDetails[];
+  onBookingClick?: (booking: BookingWithDetails) => void;
 }
 
-function DroppableColumn({ id, label, color, bookings }: DroppableColumnProps) {
+function DroppableColumn({ id, label, color, bookings, onBookingClick }: DroppableColumnProps) {
   const { setNodeRef } = useDroppable({ 
     id,
     data: { columnId: id }
@@ -125,7 +132,7 @@ function DroppableColumn({ id, label, color, bookings }: DroppableColumnProps) {
           <SortableContext items={bookings.map(b => b.id)} strategy={verticalListSortingStrategy}>
             <div className="space-y-2 pr-4">
               {bookings.map((booking) => (
-                <BookingCard key={booking.id} booking={booking} columnId={id} />
+                <BookingCard key={booking.id} booking={booking} columnId={id} onBookingClick={onBookingClick} />
               ))}
               {bookings.length === 0 && (
                 <p className="text-xs text-muted-foreground text-center py-8">
@@ -142,10 +149,17 @@ function DroppableColumn({ id, label, color, bookings }: DroppableColumnProps) {
 
 export default function KanbanBoard() {
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [selectedBooking, setSelectedBooking] = useState<BookingWithDetails | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const { data: bookings = [], isLoading } = useQuery<BookingWithDetails[]>({
     queryKey: ["/api/admin/bookings"],
   });
+
+  const handleBookingClick = (booking: BookingWithDetails) => {
+    setSelectedBooking(booking);
+    setDialogOpen(true);
+  };
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: BookingStatus }) => {
@@ -212,30 +226,39 @@ export default function KanbanBoard() {
   }
 
   return (
-    <DndContext
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-      collisionDetection={closestCorners}
-    >
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4" data-testid="kanban-board">
-        {COLUMN_STATUSES.map((column) => {
-          const columnBookings = getBookingsByStatus(column.id);
-          
-          return (
-            <DroppableColumn
-              key={column.id}
-              id={column.id}
-              label={column.label}
-              color={column.color}
-              bookings={columnBookings}
-            />
-          );
-        })}
-      </div>
+    <>
+      <DndContext
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+        collisionDetection={closestCorners}
+      >
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4" data-testid="kanban-board">
+          {COLUMN_STATUSES.map((column) => {
+            const columnBookings = getBookingsByStatus(column.id);
+            
+            return (
+              <DroppableColumn
+                key={column.id}
+                id={column.id}
+                label={column.label}
+                color={column.color}
+                bookings={columnBookings}
+                onBookingClick={handleBookingClick}
+              />
+            );
+          })}
+        </div>
 
-      <DragOverlay>
-        {activeBooking && <BookingCard booking={activeBooking} isDragging />}
-      </DragOverlay>
-    </DndContext>
+        <DragOverlay>
+          {activeBooking && <BookingCard booking={activeBooking} isDragging />}
+        </DragOverlay>
+      </DndContext>
+
+      <BookingCompletionDialog
+        booking={selectedBooking}
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+      />
+    </>
   );
 }
