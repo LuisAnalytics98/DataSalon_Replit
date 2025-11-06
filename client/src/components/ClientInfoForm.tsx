@@ -178,6 +178,10 @@ export default function ClientInfoForm({ onSubmit, initialData }: ClientInfoForm
                         disabled={(date) =>
                           date > new Date() || date < new Date("1900-01-01")
                         }
+                        captionLayout="dropdown-buttons"
+                        fromYear={1900}
+                        toYear={new Date().getFullYear()}
+                        defaultMonth={field.value || new Date(2000, 0)}
                         initialFocus
                         locale={es}
                         data-testid="calendar-birthdate"
