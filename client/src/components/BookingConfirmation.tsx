@@ -1,6 +1,8 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Calendar, Clock, User, Mail, Phone, Scissors } from "lucide-react";
+import { CheckCircle2, Calendar, Clock, User, Mail, Phone, Scissors, Cake } from "lucide-react";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 import { ClientInfo } from "./ClientInfoForm";
 import { Service } from "./ServiceSelection";
 import { Stylist } from "./StylistSelection";
@@ -144,6 +146,20 @@ export default function BookingConfirmation({
                 <p className="text-base text-foreground">{clientInfo.phone}</p>
               </div>
             </div>
+
+            {clientInfo.birthDate && (
+              <div className="flex gap-4">
+                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-accent flex items-center justify-center">
+                  <Cake className="w-5 h-5 text-accent-foreground" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground mb-1">Fecha de Nacimiento</p>
+                  <p className="text-base text-foreground" data-testid="text-birthdate">
+                    {format(clientInfo.birthDate, "PPP", { locale: es })}
+                  </p>
+                </div>
+              </div>
+            )}
 
             {clientInfo.notes && (
               <div className="pt-4 border-t">
