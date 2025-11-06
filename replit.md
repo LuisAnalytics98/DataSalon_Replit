@@ -33,7 +33,7 @@ Core data models include `salons` (multi-tenancy), `users`, and `salon_users` (f
 - **Multi-Tenancy:** Each salon has isolated data and a unique booking URL (`/book/:salonSlug`). Super-admin panel allows platform owner to manage salons.
 - **Authentication:** Replit Auth (OIDC) secures admin/employee panels, with a `salon_users` whitelist. Public booking requires no authentication.
 - **Image Uploads:** Integrated Replit Object Storage for service and stylist images via dedicated API endpoints and an `ObjectUploader` component.
-- **Booking Conflict Prevention:** Real-time availability checks prevent double-booking.
+- **Booking Conflict Prevention:** Real-time availability checks prevent double-booking. When clients select a date/time, the system fetches all existing bookings for that professional and date, visually disabling already-booked time slots (greyed out with strikethrough). Race condition safeguards automatically clear selections if a slot becomes booked and validate availability before submission. Backend returns 409 Conflict for double-booking attempts.
 - **Analytics Dashboard:** Comprehensive admin dashboard (accessed via `/admin` → "Análisis" tab) displays key metrics, popular services, top professionals, **top clients by revenue**, revenue breakdown, and status distribution. Client analytics show booking counts, email addresses, and total revenue generated.
 - **Service Completion Workflow:** Employee panel allows updating booking status and `finalPrice`.
 - **Stylist-to-User Linking:** Allows linking stylist profiles to user accounts for system access.
