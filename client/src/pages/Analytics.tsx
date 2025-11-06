@@ -18,6 +18,7 @@ interface AnalyticsData {
   };
   popularServices: Array<{ name: string; count: number; revenue: number }>;
   topStylists: Array<{ name: string; bookings: number; revenue: number }>;
+  topClients: Array<{ name: string; email: string; bookings: number; revenue: number }>;
   revenueByService: Array<{ name: string; revenue: number }>;
   statusBreakdown: {
     pending: number;
