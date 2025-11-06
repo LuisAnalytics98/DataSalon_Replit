@@ -1,11 +1,40 @@
 import { storage } from "./storage";
 
+// Auto-link new users to demo salon during development/testing
+export async function ensureUserHasDemoSalonAccess(userId: string) {
+  try {
+    // Check if user already has salon access
+    const userWithSalon = await storage.getUserWithSalon(userId);
+    if (userWithSalon && userWithSalon.salon) {
+      return; // User already has salon access
+    }
+
+    // Get demo salon
+    const demoSalon = await storage.getSalonBySlug("demo-salon");
+    if (!demoSalon) {
+      console.error("Demo salon not found - cannot link user");
+      return;
+    }
+
+    // Link user to demo salon as admin
+    await storage.createSalonUser({
+      userId,
+      salonId: demoSalon.id,
+      role: "admin",
+    });
+
+    console.log(`[DEV] Auto-linked user ${userId} to demo salon as admin`);
+  } catch (error) {
+    console.error("Error ensuring user has demo salon access:", error);
+  }
+}
+
 export async function seedDemoSalon() {
   try {
     // Check if a demo salon already exists
     const existingSalon = await storage.getSalonBySlug("demo-salon");
     if (existingSalon) {
-      console.log("Demo salon already exists, skipping seed");
+      console.log("Demo salon already exists");
       return existingSalon;
     }
 

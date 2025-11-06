@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { seedDemoSalon } from "./seed";
+import { seedDemoSalon, ensureUserHasDemoSalonAccess } from "./seed";
 import { 
   insertClientSchema, 
   insertBookingSchema,
@@ -64,6 +64,11 @@ async function requireSalonMembership(req: Request, res: Response, next: NextFun
     const userId = req.user?.claims?.sub;
     if (!userId) {
       return res.status(401).json({ error: "Authentication required" });
+    }
+
+    // Auto-link new users to demo salon during development/testing
+    if (process.env.NODE_ENV === "development") {
+      await ensureUserHasDemoSalonAccess(userId);
     }
 
     const userWithSalon = await storage.getUserWithSalon(userId);
