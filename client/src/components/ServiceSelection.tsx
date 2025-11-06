@@ -101,7 +101,7 @@ export default function ServiceSelection({ services, onContinue, initialService,
             className="px-12"
             data-testid="button-continue-service"
           >
-            Continuar a Selección de Estilista
+            Continuar a Selección de Profesional
           </Button>
         </div>
       </div>

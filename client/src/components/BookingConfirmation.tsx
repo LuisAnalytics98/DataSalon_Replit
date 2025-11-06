@@ -100,7 +100,7 @@ export default function BookingConfirmation({
                   />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground mb-1">Estilista</p>
+                  <p className="text-sm font-medium text-muted-foreground mb-1">Profesional</p>
                   <p className="text-lg font-semibold text-foreground">{stylist.name}</p>
                   <p className="text-sm text-muted-foreground">{stylist.experience} de experiencia</p>
                 </div>

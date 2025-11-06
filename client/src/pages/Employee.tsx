@@ -126,17 +126,17 @@ export default function Employee() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <Label htmlFor="stylist-filter" data-testid="label-stylist-filter">
-                Filtrar por Estilista
+                Filtrar por Profesional
               </Label>
               <Select 
                 value={selectedStylistId} 
                 onValueChange={setSelectedStylistId}
               >
                 <SelectTrigger id="stylist-filter" data-testid="select-stylist-filter">
-                  <SelectValue placeholder="Seleccionar estilista" />
+                  <SelectValue placeholder="Seleccionar profesional" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todos los Estilistas</SelectItem>
+                  <SelectItem value="all">Todos los Profesionales</SelectItem>
                   {stylists.map((stylist) => (
                     <SelectItem key={stylist.id} value={stylist.id}>
                       {stylist.name}

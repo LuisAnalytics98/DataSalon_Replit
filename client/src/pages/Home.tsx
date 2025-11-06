@@ -32,7 +32,7 @@ const stylistImages: Record<string, string> = {
 const steps = [
   { id: 1, label: "Info Cliente" },
   { id: 2, label: "Servicio" },
-  { id: 3, label: "Estilista" },
+  { id: 3, label: "Profesional" },
   { id: 4, label: "Fecha y Hora" },
   { id: 5, label: "Confirmar" }
 ];

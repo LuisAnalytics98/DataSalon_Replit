@@ -43,7 +43,7 @@ export default function Admin() {
             </TabsTrigger>
             <TabsTrigger value="stylists" className="flex items-center gap-2" data-testid="tab-stylists">
               <Users className="w-4 h-4" />
-              <span className="hidden sm:inline">Estilistas</span>
+              <span className="hidden sm:inline">Profesionales</span>
               <span className="sm:hidden">Equipo</span>
             </TabsTrigger>
           </TabsList>

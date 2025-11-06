@@ -73,7 +73,7 @@ export function BookingDetailsDialog({
           </div>
 
           <div>
-            <div className="text-sm text-muted-foreground">Estilista</div>
+            <div className="text-sm text-muted-foreground">Profesional</div>
             <div className="font-medium" data-testid="text-stylist-name">
               {booking.stylist ? booking.stylist.name : "No asignado"}
             </div>

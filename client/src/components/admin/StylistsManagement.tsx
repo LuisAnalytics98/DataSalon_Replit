@@ -81,8 +81,8 @@ export default function StylistsManagement() {
       setIsDialogOpen(false);
       resetForm();
       toast({
-        title: "Estilista creado",
-        description: "El estilista se ha creado exitosamente.",
+        title: "Profesional creado",
+        description: "El profesional se ha creado exitosamente.",
       });
     },
     onError: () => {
@@ -104,8 +104,8 @@ export default function StylistsManagement() {
       setIsDialogOpen(false);
       resetForm();
       toast({
-        title: "Estilista actualizado",
-        description: "El estilista se ha actualizado exitosamente.",
+        title: "Profesional actualizado",
+        description: "El profesional se ha actualizado exitosamente.",
       });
     },
     onError: () => {
@@ -125,8 +125,8 @@ export default function StylistsManagement() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/stylists"] });
       toast({
-        title: "Estilista eliminado",
-        description: "El estilista se ha eliminado exitosamente.",
+        title: "Profesional eliminado",
+        description: "El profesional se ha eliminado exitosamente.",
       });
     },
     onError: () => {
@@ -148,7 +148,7 @@ export default function StylistsManagement() {
       setIsAvailabilityDialogOpen(false);
       toast({
         title: "Horarios actualizados",
-        description: "Los horarios del estilista se han actualizado exitosamente.",
+        description: "Los horarios del profesional se han actualizado exitosamente.",
       });
     },
     onError: () => {
@@ -169,7 +169,7 @@ export default function StylistsManagement() {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/stylists"] });
       toast({
         title: "Imagen cargada",
-        description: "La imagen del estilista se ha cargado exitosamente.",
+        description: "La imagen del profesional se ha cargado exitosamente.",
       });
     },
     onError: () => {
@@ -327,7 +327,7 @@ export default function StylistsManagement() {
     <div className="space-y-6" data-testid="stylists-management">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold">Gestión de Estilistas</h2>
+          <h2 className="text-2xl font-bold">Gestión de Profesionales</h2>
           <p className="text-muted-foreground">Administra el equipo del salón</p>
         </div>
         
@@ -338,23 +338,23 @@ export default function StylistsManagement() {
           <DialogTrigger asChild>
             <Button data-testid="button-add-stylist">
               <Plus className="w-4 h-4 mr-2" />
-              Nuevo Estilista
+              Nuevo Profesional
             </Button>
           </DialogTrigger>
           <DialogContent data-testid="dialog-stylist-form">
             <form onSubmit={handleSubmit}>
               <DialogHeader>
                 <DialogTitle>
-                  {editingStylist ? "Editar Estilista" : "Nuevo Estilista"}
+                  {editingStylist ? "Editar Profesional" : "Nuevo Profesional"}
                 </DialogTitle>
                 <DialogDescription>
-                  {editingStylist ? "Modifica los detalles del estilista" : "Agrega un nuevo estilista al equipo"}
+                  {editingStylist ? "Modifica los detalles del profesional" : "Agrega un nuevo profesional al equipo"}
                 </DialogDescription>
               </DialogHeader>
               
               <div className="space-y-4 py-4">
                 <div>
-                  <Label htmlFor="stylist-id">ID del Estilista</Label>
+                  <Label htmlFor="stylist-id">ID del Profesional</Label>
                   <Input
                     id="stylist-id"
                     data-testid="input-stylist-id"

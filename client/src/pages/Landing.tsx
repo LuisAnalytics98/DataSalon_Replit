@@ -210,7 +210,7 @@ export default function Landing() {
 
               <div className="p-6 rounded-lg border border-border hover-elevate" data-testid="card-feature-calendar">
                 <Users className="w-10 h-10 text-primary mb-4" />
-                <h3 className="text-xl font-semibold mb-2">Gestión de Estilistas</h3>
+                <h3 className="text-xl font-semibold mb-2">Gestión de Profesionales</h3>
                 <p className="text-muted-foreground text-sm">
                   Administra horarios, servicios y disponibilidad de todo tu equipo en un solo lugar.
                 </p>

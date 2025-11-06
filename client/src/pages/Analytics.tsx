@@ -211,7 +211,7 @@ export default function Analytics() {
               {/* Top Stylists */}
               <Card data-testid="card-top-stylists">
                 <CardHeader>
-                  <CardTitle className="text-lg font-playfair">Estilistas Destacados</CardTitle>
+                  <CardTitle className="text-lg font-playfair">Profesionales Destacados</CardTitle>
                   <CardDescription>Por ingresos generados</CardDescription>
                 </CardHeader>
                 <CardContent>

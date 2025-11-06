@@ -27,10 +27,10 @@ export default function StylistSelection({ stylists, onContinue, initialStylist,
       <div className="max-w-6xl mx-auto">
         <div className="mb-12 text-center">
           <h2 className="font-serif text-4xl sm:text-5xl font-semibold text-foreground mb-3">
-            Elige tu Estilista
+            Elige tu Profesional
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Selecciona tu estilista preferido
+            Selecciona tu profesional preferido
           </p>
         </div>
 
