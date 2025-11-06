@@ -14,7 +14,9 @@ Preferred communication style: Simple, everyday language.
 
 The frontend is built with React 18 and TypeScript, using Vite for a fast development experience. UI components leverage Shadcn/ui (New York style) built on Radix UI primitives, styled with Tailwind CSS for a utility-first approach. A premium dark luxury theme with gold accents, Playfair Display for headings, and Inter for body text defines the aesthetic. State management is handled by TanStack Query for server state and React Hook Form with Zod for form management. Wouter is used for client-side routing. The branding features a "Data Salon" logo with a golden armchair icon.
 
-The booking flow follows a multi-step wizard: client info, service selection, stylist selection, date/time selection, and final confirmation. The employee panel, accessible at `/employee`, offers a dynamic calendar view (react-big-calendar) for appointment management, with filtering, multiple view options, and Spanish localization, color-coded by status.
+The booking flow follows a multi-step wizard: client info (including name, email, phone, and birth date with enhanced calendar picker), service selection, professional selection, date/time selection, and final confirmation. The employee panel, accessible at `/employee`, offers a dynamic calendar view (react-big-calendar) for appointment management, with filtering, multiple view options, and Spanish localization, color-coded by status.
+
+**Note:** The application uses "Profesional" (Professional) terminology instead of "Estilista" (Stylist) throughout the UI for a more premium feel.
 
 ### Backend Architecture
 
@@ -32,7 +34,7 @@ Core data models include `salons` (multi-tenancy), `users`, and `salon_users` (f
 - **Authentication:** Replit Auth (OIDC) secures admin/employee panels, with a `salon_users` whitelist. Public booking requires no authentication.
 - **Image Uploads:** Integrated Replit Object Storage for service and stylist images via dedicated API endpoints and an `ObjectUploader` component.
 - **Booking Conflict Prevention:** Real-time availability checks prevent double-booking.
-- **Analytics Dashboard:** Comprehensive admin dashboard displays key metrics, popular services/stylists, revenue breakdown, and status distribution.
+- **Analytics Dashboard:** Comprehensive admin dashboard (accessed via `/admin` → "Análisis" tab) displays key metrics, popular services, top professionals, **top clients by revenue**, revenue breakdown, and status distribution. Client analytics show booking counts, email addresses, and total revenue generated.
 - **Service Completion Workflow:** Employee panel allows updating booking status and `finalPrice`.
 - **Stylist-to-User Linking:** Allows linking stylist profiles to user accounts for system access.
 - **Marketing Landing Page:** Root path `/` features a marketing page with an inquiry form for salon owners.

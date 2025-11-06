@@ -8,7 +8,6 @@ import Home from "@/pages/Home";
 import Admin from "@/pages/Admin";
 import Employee from "@/pages/Employee";
 import SuperAdmin from "@/pages/SuperAdmin";
-import Analytics from "@/pages/Analytics";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -18,7 +17,6 @@ function Router() {
       <Route path="/book/:salonSlug" component={Home} />
       <Route path="/admin" component={Admin} />
       <Route path="/employee" component={Employee} />
-      <Route path="/analytics" component={Analytics} />
       <Route path="/superadmin" component={SuperAdmin} />
       <Route component={NotFound} />
     </Switch>

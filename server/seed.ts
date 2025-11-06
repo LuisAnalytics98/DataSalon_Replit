@@ -9,6 +9,13 @@ export async function ensureUserHasDemoSalonAccess(userId: string) {
       return; // User already has salon access
     }
 
+    // Verify user exists in database
+    const user = await storage.getUser(userId);
+    if (!user) {
+      console.log(`[DEV] User ${userId} not found in database yet - skipping salon link`);
+      return;
+    }
+
     // Get demo salon
     const demoSalon = await storage.getSalonBySlug("demo-salon");
     if (!demoSalon) {
