@@ -521,6 +521,28 @@ export class DbStorage implements IStorage {
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 5);
 
+    // Top clients (top 5)
+    const clientStats: { [key: string]: { name: string; email: string; bookings: number; revenue: number } } = {};
+    filteredBookings.forEach(row => {
+      if (!row.client) return;
+      const clientId = row.client.id;
+      if (!clientStats[clientId]) {
+        clientStats[clientId] = {
+          name: row.client.name,
+          email: row.client.email,
+          bookings: 0,
+          revenue: 0,
+        };
+      }
+      clientStats[clientId].bookings++;
+      if (row.booking.status === "done" && row.booking.finalPrice) {
+        clientStats[clientId].revenue += row.booking.finalPrice;
+      }
+    });
+    const topClients = Object.values(clientStats)
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 5);
+
     // Revenue by service (for breakdown)
     const revenueByService = Object.values(serviceStats)
       .filter(s => s.revenue > 0)
@@ -544,6 +566,7 @@ export class DbStorage implements IStorage {
       },
       popularServices,
       topStylists,
+      topClients,
       revenueByService,
       statusBreakdown,
     };
