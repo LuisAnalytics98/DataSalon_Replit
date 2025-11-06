@@ -9,7 +9,8 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { BookingWithDetails } from "@shared/schema";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Calendar, Clock, User, Scissors } from "lucide-react";
+import { Calendar, Clock, User, Scissors, Edit, GripVertical } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { BookingCompletionDialog } from "@/components/employee/BookingCompletionDialog";
@@ -54,24 +55,42 @@ function BookingCard({ booking, isDragging, columnId, onBookingClick }: BookingC
       ref={setNodeRef}
       style={style}
       {...attributes}
-      {...listeners}
-      className="mb-2 cursor-move hover-elevate active-elevate-2"
+      className="mb-2 hover-elevate active-elevate-2"
       data-testid={`booking-card-${booking.id}`}
-      onClick={(e) => {
-        e.stopPropagation();
-        onBookingClick?.(booking);
-      }}
     >
       <CardContent className="p-4">
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="font-semibold text-sm" data-testid={`booking-reference-${booking.id}`}>
-              {booking.bookingReference}
-            </span>
-            <Badge variant="outline" className="text-xs">
-              {format(new Date(booking.appointmentDate), "MMM dd", { locale: es })}
-            </Badge>
-          </div>
+        <div className="flex gap-2">
+          <button
+            {...listeners}
+            className="cursor-move flex-shrink-0 self-start min-h-11 min-w-11 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            data-testid={`drag-handle-${booking.id}`}
+            aria-label="Arrastrar reserva"
+          >
+            <GripVertical className="h-4 w-4" />
+          </button>
+          <div className="space-y-2 flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-semibold text-sm truncate" data-testid={`booking-reference-${booking.id}`}>
+                {booking.bookingReference}
+              </span>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <Badge variant="outline" className="text-xs">
+                  {format(new Date(booking.appointmentDate), "MMM dd", { locale: es })}
+                </Badge>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onBookingClick?.(booking);
+                  }}
+                  data-testid={`button-edit-booking-${booking.id}`}
+                  aria-label="Editar reserva"
+                >
+                  <Edit className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
           
           <div className="space-y-1 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
@@ -96,6 +115,7 @@ function BookingCard({ booking, isDragging, columnId, onBookingClick }: BookingC
               <span data-testid={`booking-time-${booking.id}`}>{booking.appointmentTime}</span>
             </div>
           </div>
+        </div>
         </div>
       </CardContent>
     </Card>
