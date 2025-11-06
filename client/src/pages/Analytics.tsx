@@ -238,6 +238,35 @@ export default function Analytics() {
                 </CardContent>
               </Card>
 
+              {/* Top Clients */}
+              <Card data-testid="card-top-clients">
+                <CardHeader>
+                  <CardTitle className="text-lg font-playfair">Clientes Destacados</CardTitle>
+                  <CardDescription>Por ingresos generados</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {analytics.topClients.length > 0 ? (
+                    <div className="space-y-4">
+                      {analytics.topClients.map((client, index) => (
+                        <div key={index} className="flex items-center justify-between" data-testid={`client-${index}`}>
+                          <div className="flex-1">
+                            <p className="font-medium text-sm">{client.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {client.bookings} {client.bookings === 1 ? "cita" : "citas"} · {client.email}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-medium text-sm">{formatCurrency(client.revenue)}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No hay datos disponibles</p>
+                  )}
+                </CardContent>
+              </Card>
+
               {/* Revenue by Service */}
               <Card data-testid="card-revenue-breakdown">
                 <CardHeader>
