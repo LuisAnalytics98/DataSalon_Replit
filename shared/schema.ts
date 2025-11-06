@@ -128,6 +128,8 @@ export const insertSalonUserSchema = createInsertSchema(salonUsers).omit({
 export const insertClientSchema = createInsertSchema(clients).omit({
   id: true,
   createdAt: true,
+}).extend({
+  birthDate: z.union([z.date(), z.string().transform((val) => new Date(val))]).optional().nullable(),
 });
 
 export const insertServiceSchema = createInsertSchema(services);

@@ -4,8 +4,7 @@ import { CheckCircle2, Calendar, Clock, User, Mail, Phone, Scissors, Cake } from
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { ClientInfo } from "./ClientInfoForm";
-import { Service } from "./ServiceSelection";
-import { Stylist } from "./StylistSelection";
+import type { Service, Stylist } from "@shared/schema";
 
 interface BookingConfirmationProps {
   bookingId: string;
@@ -95,11 +94,17 @@ export default function BookingConfirmation({
             {stylist && (
               <div className="flex gap-4">
                 <div className="flex-shrink-0">
-                  <img
-                    src={stylist.image}
-                    alt={stylist.name}
-                    className="w-10 h-10 rounded-full object-cover"
-                  />
+                  {stylist.imageUrl ? (
+                    <img
+                      src={stylist.imageUrl}
+                      alt={stylist.name}
+                      className="w-10 h-10 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center">
+                      <User className="w-5 h-5 text-accent-foreground" />
+                    </div>
+                  )}
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground mb-1">Profesional</p>

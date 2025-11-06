@@ -210,6 +210,7 @@ export default function Home() {
               name: confirmedBooking.client.name,
               email: confirmedBooking.client.email,
               phone: confirmedBooking.client.phone,
+              birthDate: confirmedBooking.client.birthDate ? new Date(confirmedBooking.client.birthDate) : undefined,
               notes: confirmedBooking.client.notes || undefined,
             }}
             service={{
