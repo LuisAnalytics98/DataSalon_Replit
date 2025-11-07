@@ -123,6 +123,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ===== PUBLIC ROUTES (No auth required, salon-scoped) =====
   
+  // Get salon info by slug (public booking flow)
+  app.get("/api/public/:salonSlug", resolveSalonSlug, async (req, res) => {
+    try{
+      res.json(req.salon);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch salon" });
+    }
+  });
+
   // Get services for a specific salon (public booking flow)
   app.get("/api/public/:salonSlug/services", resolveSalonSlug, async (req, res) => {
     try {
@@ -236,6 +245,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update salon settings (owner/admin only)
+  app.patch("/api/admin/salon", isAuthenticated, requireSalonMembership, requireRole("owner", "admin"), async (req, res) => {
+    try {
+      const { name, description, phone, email, location, whatsappNumber, instagramUrl, facebookUrl } = req.body;
+      const updateData: Partial<InsertSalon> = {};
+      
+      if (name !== undefined) updateData.name = name;
+      if (description !== undefined) updateData.description = description;
+      if (phone !== undefined) updateData.phone = phone;
+      if (email !== undefined) updateData.email = email;
+      if (location !== undefined) updateData.location = location;
+      if (whatsappNumber !== undefined) updateData.whatsappNumber = whatsappNumber;
+      if (instagramUrl !== undefined) updateData.instagramUrl = instagramUrl;
+      if (facebookUrl !== undefined) updateData.facebookUrl = facebookUrl;
+
+      const salon = await storage.updateSalon(req.salon!.id, updateData);
+      if (!salon) {
+        return res.status(404).json({ error: "Salon not found" });
+      }
+      res.json(salon);
+    } catch (error) {
+      console.error("Error updating salon:", error);
+      res.status(500).json({ error: "Failed to update salon" });
+    }
+  });
+
   // Get users assigned to current salon (for linking to stylists)
   app.get("/api/admin/users", isAuthenticated, requireSalonMembership, async (req, res) => {
     try {
@@ -247,10 +282,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get all bookings for user's salon
+  // Get current user's stylist profile (if exists)
+  app.get("/api/admin/my-stylist", isAuthenticated, requireSalonMembership, async (req, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+      
+      const stylist = await storage.getStylistByUserId(userId);
+      res.json(stylist || null);
+    } catch (error) {
+      console.error("Error fetching user stylist:", error);
+      res.status(500).json({ error: "Failed to fetch stylist profile" });
+    }
+  });
+
+  // Get all bookings for user's salon (employees see only their bookings)
   app.get("/api/admin/bookings", isAuthenticated, requireSalonMembership, async (req, res) => {
     try {
-      const bookings = await storage.getBookingsBySalon(req.salon!.id);
+      let bookings = await storage.getBookingsBySalon(req.salon!.id);
+      
+      // If user is an employee, filter to only their bookings
+      if (req.userRole === "employee") {
+        const userId = req.user?.claims?.sub;
+        if (userId) {
+          const stylist = await storage.getStylistByUserId(userId);
+          if (stylist) {
+            bookings = bookings.filter(booking => booking.stylistId === stylist.id);
+          } else {
+            // Employee has no stylist record, return empty array
+            bookings = [];
+          }
+        }
+      }
+      
       res.json(bookings);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch bookings" });
@@ -297,13 +363,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get analytics for admin dashboard (admin/owner only)
   app.get("/api/admin/analytics", isAuthenticated, requireSalonMembership, requireRole("owner", "admin"), async (req, res) => {
     try {
-      const { startDate, endDate } = req.query;
+      const { startDate, endDate, stylistId } = req.query;
       const salonId = req.salon!.id;
       
       const analytics = await storage.getAnalytics(
         salonId,
         startDate ? new Date(startDate as string) : undefined,
-        endDate ? new Date(endDate as string) : undefined
+        endDate ? new Date(endDate as string) : undefined,
+        stylistId as string | undefined
       );
       
       res.json(analytics);

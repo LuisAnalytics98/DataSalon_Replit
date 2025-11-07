@@ -22,9 +22,10 @@ export default function ServicesManagement() {
     salonId: "",
     name: "",
     description: "",
-    duration: "",
+    duration: 60,
     price: 0,
     currency: "colones",
+    reservationAmount: 0,
     photo: "",
   });
   const { toast } = useToast();
@@ -148,9 +149,10 @@ export default function ServicesManagement() {
       salonId: "",
       name: "",
       description: "",
-      duration: "",
+      duration: 60,
       price: 0,
       currency: "colones",
+      reservationAmount: 0,
       photo: "",
     });
     setEditingService(null);
@@ -278,14 +280,20 @@ export default function ServicesManagement() {
                 
                 <div>
                   <Label htmlFor="service-duration">Duración</Label>
-                  <Input
-                    id="service-duration"
-                    data-testid="input-service-duration"
-                    value={formData.duration}
-                    onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
-                    placeholder="ej: 60 min"
-                    required
-                  />
+                  <Select
+                    value={formData.duration?.toString() || "60"}
+                    onValueChange={(value) => setFormData({ ...formData, duration: parseInt(value) })}
+                  >
+                    <SelectTrigger id="service-duration" data-testid="select-service-duration">
+                      <SelectValue placeholder="Seleccionar duración" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="30">30 minutos</SelectItem>
+                      <SelectItem value="60">60 minutos</SelectItem>
+                      <SelectItem value="90">90 minutos</SelectItem>
+                      <SelectItem value="120">120 minutos</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4">
@@ -317,6 +325,21 @@ export default function ServicesManagement() {
                       </SelectContent>
                     </Select>
                   </div>
+                </div>
+                
+                <div>
+                  <Label htmlFor="service-reservation">Monto de Reserva (opcional)</Label>
+                  <Input
+                    id="service-reservation"
+                    data-testid="input-service-reservation"
+                    type="number"
+                    value={formData.reservationAmount || 0}
+                    onChange={(e) => setFormData({ ...formData, reservationAmount: parseInt(e.target.value) || 0 })}
+                    placeholder="ej: 5000"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Monto que el cliente debe enviar para reservar la cita
+                  </p>
                 </div>
               </div>
               
@@ -409,7 +432,7 @@ export default function ServicesManagement() {
               <div className="flex items-center justify-between text-sm">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Clock className="w-4 h-4" />
-                  <span>{service.duration}</span>
+                  <span>{service.duration} min</span>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">Precio aprox.</p>
@@ -418,6 +441,11 @@ export default function ServicesManagement() {
                   </div>
                 </div>
               </div>
+              {service.reservationAmount && service.reservationAmount > 0 && (
+                <div className="mt-3 pt-3 border-t text-xs text-muted-foreground">
+                  Reserva: {service.currency === "dolares" ? "$" : "₡"}{service.reservationAmount}
+                </div>
+              )}
             </CardContent>
           </Card>
         ))}

@@ -9,7 +9,8 @@ import ServiceSelection from "@/components/ServiceSelection";
 import StylistSelection from "@/components/StylistSelection";
 import DateTimeSelection from "@/components/DateTimeSelection";
 import BookingConfirmation from "@/components/BookingConfirmation";
-import type { Service, Stylist, BookingWithDetails } from "@shared/schema";
+import type { Service, Stylist, BookingWithDetails, Salon } from "@shared/schema";
+import { Phone, Mail, MapPin, Facebook, Instagram, MessageCircle } from "lucide-react";
 import haircutImage from "@assets/generated_images/Haircut_service_image_c010f519.png";
 import manicureImage from "@assets/generated_images/Manicure_service_image_c9507d7a.png";
 import pedicureImage from "@assets/generated_images/Pedicure_service_image_68db06c2.png";
@@ -67,6 +68,11 @@ export default function Home() {
   // Fetch stylists from backend
   const { data: stylists = [], isLoading: stylistsLoading } = useQuery<Stylist[]>({
     queryKey: [`/api/public/${salonSlug}/stylists`],
+  });
+
+  // Fetch salon information
+  const { data: salonInfo } = useQuery<Salon>({
+    queryKey: [`/api/public/${salonSlug}`],
   });
 
   // Create booking mutation
@@ -214,22 +220,8 @@ export default function Home() {
               birthDate: confirmedBooking.client.birthDate ? new Date(confirmedBooking.client.birthDate) : undefined,
               notes: confirmedBooking.client.notes || undefined,
             }}
-            service={{
-              id: confirmedBooking.service.id,
-              name: confirmedBooking.service.name,
-              description: confirmedBooking.service.description,
-              duration: confirmedBooking.service.duration,
-              price: confirmedBooking.service.price,
-              image: confirmedBooking.service.photo || serviceImages[confirmedBooking.service.id] || haircutImage,
-            }}
-            stylist={confirmedBooking.stylist ? {
-              id: confirmedBooking.stylist.id,
-              name: confirmedBooking.stylist.name,
-              specialties: confirmedBooking.stylist.specialties,
-              experience: confirmedBooking.stylist.experience,
-              rating: confirmedBooking.stylist.rating / 10,
-              image: stylistImages[confirmedBooking.stylist.id] || sarahImage,
-            } : null}
+            service={confirmedBooking.service}
+            stylist={confirmedBooking.stylist}
             date={new Date(confirmedBooking.appointmentDate)}
             time={confirmedBooking.appointmentTime}
             onNewBooking={handleNewBooking}
@@ -237,6 +229,75 @@ export default function Home() {
           />
         )}
       </div>
+
+      {/* Salon Contact Information Footer */}
+      {salonInfo && (currentStep < 5) && (
+        <footer className="bg-muted/30 border-t mt-12">
+          <div className="container mx-auto px-4 py-8 max-w-6xl">
+            <div className="text-center mb-6">
+              <h3 className="text-2xl font-serif font-bold text-foreground mb-2">{salonInfo.name}</h3>
+              {salonInfo.description && (
+                <p className="text-muted-foreground">{salonInfo.description}</p>
+              )}
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Contact Info */}
+              <div className="space-y-3">
+                <h4 className="font-semibold text-foreground mb-3">Contacto</h4>
+                {salonInfo.phone && (
+                  <a href={`tel:${salonInfo.phone}`} className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors" data-testid="link-salon-phone">
+                    <Phone className="w-4 h-4" />
+                    <span>{salonInfo.phone}</span>
+                  </a>
+                )}
+                {salonInfo.email && (
+                  <a href={`mailto:${salonInfo.email}`} className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors" data-testid="link-salon-email">
+                    <Mail className="w-4 h-4" />
+                    <span>{salonInfo.email}</span>
+                  </a>
+                )}
+                {salonInfo.whatsappNumber && (
+                  <a href={`https://wa.me/${salonInfo.whatsappNumber.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors" data-testid="link-salon-whatsapp">
+                    <MessageCircle className="w-4 h-4" />
+                    <span>WhatsApp</span>
+                  </a>
+                )}
+              </div>
+
+              {/* Location */}
+              {salonInfo.location && (
+                <div className="space-y-3">
+                  <h4 className="font-semibold text-foreground mb-3">Ubicación</h4>
+                  <div className="flex items-start gap-2 text-muted-foreground">
+                    <MapPin className="w-4 h-4 mt-1 flex-shrink-0" />
+                    <span data-testid="text-salon-location">{salonInfo.location}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Social Media */}
+              {(salonInfo.instagramUrl || salonInfo.facebookUrl) && (
+                <div className="space-y-3">
+                  <h4 className="font-semibold text-foreground mb-3">Redes Sociales</h4>
+                  <div className="flex gap-4">
+                    {salonInfo.instagramUrl && (
+                      <a href={salonInfo.instagramUrl} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors" data-testid="link-salon-instagram">
+                        <Instagram className="w-5 h-5" />
+                      </a>
+                    )}
+                    {salonInfo.facebookUrl && (
+                      <a href={salonInfo.facebookUrl} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors" data-testid="link-salon-facebook">
+                        <Facebook className="w-5 h-5" />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </footer>
+      )}
     </div>
   );
 }

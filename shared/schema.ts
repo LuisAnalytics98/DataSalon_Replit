@@ -31,6 +31,12 @@ export const salons = pgTable("salons", {
   name: text("name").notNull(),
   slug: varchar("slug").notNull().unique(), // URL-friendly identifier (e.g., "velvet-salon")
   description: text("description"),
+  phone: text("phone"),
+  email: text("email"),
+  location: text("location"),
+  whatsappNumber: text("whatsapp_number"),
+  instagramUrl: text("instagram_url"),
+  facebookUrl: text("facebook_url"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -58,9 +64,10 @@ export const services = pgTable("services", {
   salonId: varchar("salon_id").notNull().references(() => salons.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   description: text("description").notNull(),
-  duration: text("duration").notNull(),
+  duration: integer("duration").notNull(), // Duration in minutes (30, 60, 90, 120)
   price: integer("price").notNull(),
   currency: text("currency").notNull().default("colones"), // "dolares" or "colones"
+  reservationAmount: integer("reservation_amount"), // Optional reservation/deposit amount
   photo: text("photo"), // URL or file path for service photo
   imageUrl: text("image_url"), // URL for uploaded service image from object storage
 });

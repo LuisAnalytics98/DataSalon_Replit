@@ -71,6 +71,7 @@ export interface IStorage {
   // Stylists (now salon-scoped)
   getStylistsBySalon(salonId: string): Promise<Stylist[]>;
   getStylistById(id: string): Promise<Stylist | undefined>;
+  getStylistByUserId(userId: string): Promise<Stylist | undefined>;
   createStylist(stylist: InsertStylist): Promise<Stylist>;
   updateStylist(id: string, salonId: string, stylist: Partial<InsertStylist>): Promise<Stylist | undefined>;
   deleteStylist(id: string, salonId: string): Promise<boolean>;
@@ -95,7 +96,7 @@ export interface IStorage {
   updateSalonInquiryStatus(id: string, status: string): Promise<SalonInquiry | undefined>;
   
   // Analytics
-  getAnalytics(salonId: string, startDate?: Date, endDate?: Date): Promise<any>;
+  getAnalytics(salonId: string, startDate?: Date, endDate?: Date, stylistId?: string): Promise<any>;
 }
 
 export class DbStorage implements IStorage {
@@ -263,6 +264,11 @@ export class DbStorage implements IStorage {
 
   async getStylistById(id: string): Promise<Stylist | undefined> {
     const [stylist] = await db.select().from(stylists).where(eq(stylists.id, id));
+    return stylist;
+  }
+
+  async getStylistByUserId(userId: string): Promise<Stylist | undefined> {
+    const [stylist] = await db.select().from(stylists).where(eq(stylists.userId, userId));
     return stylist;
   }
 
@@ -436,8 +442,8 @@ export class DbStorage implements IStorage {
   }
 
   // Analytics
-  async getAnalytics(salonId: string, startDate?: Date, endDate?: Date): Promise<any> {
-    // Fetch all bookings for the salon, optionally filtered by date range
+  async getAnalytics(salonId: string, startDate?: Date, endDate?: Date, stylistId?: string): Promise<any> {
+    // Fetch all bookings for the salon, optionally filtered by date range and stylist
     let bookingsQuery = db
       .select({
         booking: bookings,
@@ -453,12 +459,13 @@ export class DbStorage implements IStorage {
     
     const allBookings = await bookingsQuery;
     
-    // Filter by date range if provided
+    // Filter by date range and stylist if provided
     const filteredBookings = allBookings.filter(row => {
-      if (!row.booking.date) return false;
-      const bookingDate = new Date(row.booking.date);
+      if (!row.booking.appointmentDate) return false;
+      const bookingDate = new Date(row.booking.appointmentDate);
       if (startDate && bookingDate < startDate) return false;
       if (endDate && bookingDate > endDate) return false;
+      if (stylistId && row.booking.stylistId !== stylistId) return false;
       return true;
     });
 

@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import Header from "@/components/Header";
 import { TrendingUp, Users, DollarSign, Calendar } from "lucide-react";
 import { subDays, subMonths, startOfMonth, endOfMonth, format } from "date-fns";
+import type { Stylist } from "@shared/schema";
 
 type TimeRange = "today" | "week" | "month" | "all";
 
@@ -31,6 +32,12 @@ interface AnalyticsData {
 
 export default function Analytics() {
   const [timeRange, setTimeRange] = useState<TimeRange>("month");
+  const [selectedStylistId, setSelectedStylistId] = useState<string>("all");
+
+  // Fetch stylists for filter
+  const { data: stylists = [] } = useQuery<Stylist[]>({
+    queryKey: ["/api/admin/stylists"],
+  });
 
   const getDateRange = () => {
     const now = new Date();
@@ -60,11 +67,12 @@ export default function Analytics() {
   const { startDate, endDate } = getDateRange();
 
   const { data: analytics, isLoading } = useQuery<AnalyticsData>({
-    queryKey: ["/api/admin/analytics", startDate, endDate],
+    queryKey: ["/api/admin/analytics", startDate, endDate, selectedStylistId],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (startDate) params.append("startDate", startDate);
       if (endDate) params.append("endDate", endDate);
+      if (selectedStylistId !== "all") params.append("stylistId", selectedStylistId);
       const response = await fetch(`/api/admin/analytics?${params.toString()}`);
       if (!response.ok) throw new Error("Failed to fetch analytics");
       return response.json();
@@ -80,31 +88,54 @@ export default function Analytics() {
       <Header />
 
       <div className="container mx-auto px-4 py-8 max-w-7xl">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-playfair font-bold text-foreground" data-testid="text-analytics-title">
-              Análisis y Métricas
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              Visualiza el rendimiento de tu salón
-            </p>
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-3xl font-playfair font-bold text-foreground" data-testid="text-analytics-title">
+                Análisis y Métricas
+              </h1>
+              <p className="text-muted-foreground mt-1">
+                Visualiza el rendimiento de tu salón
+              </p>
+            </div>
           </div>
 
-          <div className="w-48">
-            <Label htmlFor="time-range" className="text-sm mb-2 block">
-              Período de tiempo
-            </Label>
-            <Select value={timeRange} onValueChange={(value) => setTimeRange(value as TimeRange)}>
-              <SelectTrigger id="time-range" data-testid="select-time-range">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="today">Hoy</SelectItem>
-                <SelectItem value="week">Última semana</SelectItem>
-                <SelectItem value="month">Este mes</SelectItem>
-                <SelectItem value="all">Todo el tiempo</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="flex gap-4 flex-wrap">
+            <div className="w-48">
+              <Label htmlFor="time-range" className="text-sm mb-2 block">
+                Período de tiempo
+              </Label>
+              <Select value={timeRange} onValueChange={(value) => setTimeRange(value as TimeRange)}>
+                <SelectTrigger id="time-range" data-testid="select-time-range">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="today">Hoy</SelectItem>
+                  <SelectItem value="week">Última semana</SelectItem>
+                  <SelectItem value="month">Este mes</SelectItem>
+                  <SelectItem value="all">Todo el tiempo</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="w-48">
+              <Label htmlFor="stylist-filter" className="text-sm mb-2 block">
+                Filtrar por Profesional
+              </Label>
+              <Select value={selectedStylistId} onValueChange={setSelectedStylistId}>
+                <SelectTrigger id="stylist-filter" data-testid="select-stylist-filter-analytics">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  {stylists.map((stylist) => (
+                    <SelectItem key={stylist.id} value={stylist.id}>
+                      {stylist.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
 

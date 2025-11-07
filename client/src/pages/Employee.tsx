@@ -32,36 +32,31 @@ interface CalendarEvent {
 }
 
 export default function Employee() {
-  const [selectedStylistId, setSelectedStylistId] = useState<string>("all");
   const [calendarView, setCalendarView] = useState<View>("month");
   const [selectedBooking, setSelectedBooking] = useState<BookingWithDetails | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  // Fetch stylists
-  const { data: stylists = [], isLoading: stylistsLoading } = useQuery<Stylist[]>({
-    queryKey: ["/api/admin/stylists"],
+  // Fetch current user's stylist profile
+  const { data: myStylist } = useQuery<Stylist | null>({
+    queryKey: ["/api/admin/my-stylist"],
   });
 
-  // Fetch bookings
+  // Fetch bookings (backend automatically filters for employees)
   const { data: bookings = [], isLoading: bookingsLoading } = useQuery<BookingWithDetails[]>({
     queryKey: ["/api/admin/bookings"],
   });
 
-  // Filter bookings by selected stylist
-  const filteredBookings = selectedStylistId === "all" 
-    ? bookings 
-    : bookings.filter(b => b.stylistId === selectedStylistId);
-
   // Convert bookings to calendar events
-  const events: CalendarEvent[] = filteredBookings.map((booking) => {
+  const events: CalendarEvent[] = bookings.map((booking) => {
     const appointmentDate = new Date(booking.appointmentDate);
     const [hours, minutes] = booking.appointmentTime.split(':');
     const startTime = new Date(appointmentDate);
     startTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
 
     // Parse duration and calculate end time
-    const durationMatch = booking.service.duration.match(/(\d+)/);
-    const durationMinutes = durationMatch ? parseInt(durationMatch[1]) : 60;
+    const durationMinutes = typeof booking.service.duration === 'number' 
+      ? booking.service.duration 
+      : 60;
     const endTime = new Date(startTime);
     endTime.setMinutes(endTime.getMinutes() + durationMinutes);
 
@@ -121,56 +116,41 @@ export default function Employee() {
           </p>
         </div>
 
-        {/* Filters */}
-        <Card className="p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <Label htmlFor="stylist-filter" data-testid="label-stylist-filter">
-                Filtrar por Profesional
-              </Label>
-              <Select 
-                value={selectedStylistId} 
-                onValueChange={setSelectedStylistId}
-              >
-                <SelectTrigger id="stylist-filter" data-testid="select-stylist-filter">
-                  <SelectValue placeholder="Seleccionar profesional" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos los Profesionales</SelectItem>
-                  {stylists.map((stylist) => (
-                    <SelectItem key={stylist.id} value={stylist.id}>
-                      {stylist.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+        {/* Show stylist info */}
+        {myStylist && (
+          <Card className="p-4 mb-6 bg-primary/5 border-primary">
+            <p className="text-sm text-muted-foreground">
+              Visualizando citas asignadas a: <span className="font-semibold text-foreground">{myStylist.name}</span>
+            </p>
+          </Card>
+        )}
 
-            <div className="space-y-2">
-              <Label htmlFor="view-filter" data-testid="label-view-filter">
-                Vista del Calendario
-              </Label>
-              <Select 
-                value={calendarView} 
-                onValueChange={(value) => setCalendarView(value as View)}
-              >
-                <SelectTrigger id="view-filter" data-testid="select-view-filter">
-                  <SelectValue placeholder="Seleccionar vista" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="month">Mes</SelectItem>
-                  <SelectItem value="week">Semana</SelectItem>
-                  <SelectItem value="day">Día</SelectItem>
-                  <SelectItem value="agenda">Agenda</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+        {/* Calendar View Filter */}
+        <Card className="p-6 mb-6">
+          <div className="max-w-xs">
+            <Label htmlFor="view-filter" data-testid="label-view-filter">
+              Vista del Calendario
+            </Label>
+            <Select 
+              value={calendarView} 
+              onValueChange={(value) => setCalendarView(value as View)}
+            >
+              <SelectTrigger id="view-filter" data-testid="select-view-filter" className="mt-2">
+                <SelectValue placeholder="Seleccionar vista" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="month">Mes</SelectItem>
+                <SelectItem value="week">Semana</SelectItem>
+                <SelectItem value="day">Día</SelectItem>
+                <SelectItem value="agenda">Agenda</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </Card>
 
         {/* Calendar */}
         <Card className="p-6">
-          {bookingsLoading || stylistsLoading ? (
+          {bookingsLoading ? (
             <div className="flex items-center justify-center h-[600px]">
               <p className="text-muted-foreground">Cargando calendario...</p>
             </div>

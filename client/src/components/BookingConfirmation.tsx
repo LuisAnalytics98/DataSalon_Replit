@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Calendar, Clock, User, Mail, Phone, Scissors, Cake } from "lucide-react";
+import { CheckCircle2, Calendar, Clock, User, Mail, Phone, Scissors, Cake, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { ClientInfo } from "./ClientInfoForm";
@@ -81,7 +81,7 @@ export default function BookingConfirmation({
                 <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
                   <div className="flex items-center gap-1">
                     <Clock className="w-4 h-4" />
-                    <span>{service.duration}</span>
+                    <span>{service.duration} min</span>
                   </div>
                   <span>•</span>
                   <span className="font-semibold text-foreground">
@@ -115,6 +115,24 @@ export default function BookingConfirmation({
             )}
           </div>
         </Card>
+
+        {service.reservationAmount && service.reservationAmount > 0 && (
+          <Card className="p-6 mb-6 border-primary bg-primary/5">
+            <div className="flex items-start gap-3 mb-3">
+              <AlertTriangle className="w-5 h-5 text-primary flex-shrink-0 mt-1" />
+              <h3 className="font-semibold text-lg">Importante: Reserva Requerida</h3>
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              Para confirmar tu cita, por favor envía el comprobante de pago al WhatsApp del salón con el monto de reserva. De otro modo, tu cita será cancelada.
+            </p>
+            <div className="bg-background p-4 rounded-md">
+              <p className="text-sm text-muted-foreground mb-1">Monto de Reserva:</p>
+              <p className="text-2xl font-bold text-primary">
+                {service.currency === "dolares" ? "$" : "₡"}{service.reservationAmount}
+              </p>
+            </div>
+          </Card>
+        )}
 
         <Card className="p-8 mb-8">
           <h2 className="font-serif text-2xl font-semibold text-foreground mb-6 pb-4 border-b">
