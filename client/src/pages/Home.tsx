@@ -89,6 +89,7 @@ export default function Home() {
     },
     onSuccess: (data) => {
       setConfirmedBooking(data);
+      setCurrentStep(5); // Move to confirmation step after booking is created
       queryClient.invalidateQueries({ queryKey: [`/api/public/${salonSlug}/bookings`] });
     },
   });
@@ -122,8 +123,7 @@ export default function Home() {
         time,
       });
     }
-
-    setCurrentStep(5);
+    // Note: setCurrentStep(5) is now in onSuccess callback to avoid race condition
   };
 
   const handleNewBooking = () => {
@@ -204,7 +204,7 @@ export default function Home() {
           />
         )}
 
-        {currentStep === 4 && (
+        {currentStep === 4 && !createBookingMutation.isPending && (
           <DateTimeSelection
             onContinue={handleDateTimeSelect}
             initialDate={bookingData.date}
@@ -212,6 +212,18 @@ export default function Home() {
             stylistId={bookingData.stylistId}
             salonSlug={salonSlug}
           />
+        )}
+
+        {createBookingMutation.isPending && (
+          <div className="container mx-auto px-4 py-16 max-w-2xl">
+            <div className="text-center space-y-4">
+              <div className="flex justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+              </div>
+              <h2 className="text-2xl font-serif font-bold text-foreground">Procesando tu reserva...</h2>
+              <p className="text-muted-foreground">Por favor espera un momento</p>
+            </div>
+          </div>
         )}
 
         {currentStep === 5 && confirmedBooking && (
@@ -229,7 +241,7 @@ export default function Home() {
             date={new Date(confirmedBooking.appointmentDate)}
             time={confirmedBooking.appointmentTime}
             onNewBooking={handleNewBooking}
-            isLoading={createBookingMutation.isPending}
+            isLoading={false}
           />
         )}
       </div>
