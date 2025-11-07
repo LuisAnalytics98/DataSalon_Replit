@@ -34,10 +34,16 @@ Core data models include `salons` (multi-tenancy), `users`, and `salon_users` (f
 - **Authentication:** Replit Auth (OIDC) secures admin/employee panels, with a `salon_users` whitelist. Public booking requires no authentication.
 - **Image Uploads:** Integrated Replit Object Storage for service and stylist images via dedicated API endpoints and an `ObjectUploader` component.
 - **Booking Conflict Prevention:** Real-time availability checks prevent double-booking. When clients select a date/time, the system fetches all existing bookings for that professional and date, visually disabling already-booked time slots (greyed out with strikethrough). Race condition safeguards automatically clear selections if a slot becomes booked and validate availability before submission. Backend returns 409 Conflict for double-booking attempts.
-- **Analytics Dashboard:** Comprehensive admin dashboard (accessed via `/admin` → "Análisis" tab) displays key metrics, popular services, top professionals, **top clients by revenue**, revenue breakdown, and status distribution. Client analytics show booking counts, email addresses, and total revenue generated.
+- **Service Duration System:** Services have numeric durations (30, 60, 90, 120 minutes) shown with "min" suffix. Time slots are blocked for the full service duration to prevent overlapping bookings.
+- **Reservation Amount System:** Services can require a reservation deposit (`reservationAmount` field). When booking a service with a reservation amount, clients see a warning card with AlertTriangle icon and WhatsApp payment instructions in Spanish: "Por favor enviar el comprobante al WhatsApp del salón con el monto de reserva, de otro modo se cancelará tu cita."
+- **Admin Calendar:** Comprehensive calendar view (via `/admin` → "Calendario" tab) with employee/stylist filtering, inline editing of booking status and final price, and support for creating appointments directly from agenda view. Uses react-big-calendar with Spanish localization.
+- **Analytics Dashboard:** Comprehensive admin dashboard (accessed via `/admin` → "Análisis" tab) with **employee/stylist filtering** displays key metrics, popular services, top professionals, **top clients by revenue**, revenue breakdown, and status distribution. Client analytics show booking counts, email addresses, and total revenue generated. All metrics can be filtered by specific professional.
+- **Salon Contact Management:** Admin can configure salon contact information (phone, email, location, social media links) via Settings tab. This information is displayed at the bottom of the public booking page for client reference.
+- **Employee Permissions:** Employee dashboard (`/employee`) restricts data access to only bookings assigned to the logged-in employee's linked stylist record. Backend enforces this via `getStylistByUserId` method, ensuring employees cannot view other professionals' appointments. The employee panel removed stylist filtering (since employees only see their own bookings) but retains calendar view options.
 - **Service Completion Workflow:** Employee panel allows updating booking status and `finalPrice`.
 - **Stylist-to-User Linking:** Allows linking stylist profiles to user accounts for system access.
 - **Marketing Landing Page:** Root path `/` features a marketing page with an inquiry form for salon owners.
+- **Professional Filtering:** Stylist selection automatically filters professionals by service specialties, with fallback to show all professionals if no specialty match is found.
 
 ## External Dependencies
 

@@ -70,7 +70,7 @@ export default function StylistSelection({ stylists, onContinue, initialStylist,
                     
                     <div className="flex items-center gap-1 mb-3 justify-center sm:justify-start">
                       <Star className="w-4 h-4 fill-primary text-primary" />
-                      <span className="text-sm font-semibold text-foreground">{stylist.rating}</span>
+                      <span className="text-sm font-semibold text-foreground">{stylist.rating.toFixed(1)}</span>
                       <span className="text-sm text-muted-foreground ml-1">
                         • {stylist.experience} de experiencia
                       </span>

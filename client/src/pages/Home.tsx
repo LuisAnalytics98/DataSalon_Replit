@@ -155,12 +155,16 @@ export default function Home() {
 
   // Filter stylists by selected service
   const filteredStylists = selectedService
-    ? stylistsWithImages.filter(stylist =>
-        stylist.specialties.some(specialty =>
-          specialty.toLowerCase().includes(selectedService.name.split(' ')[0].toLowerCase()) ||
-          selectedService.name.toLowerCase().includes(specialty.toLowerCase())
-        )
-      )
+    ? (() => {
+        const matched = stylistsWithImages.filter(stylist =>
+          stylist.specialties.some(specialty =>
+            specialty.toLowerCase().includes(selectedService.name.split(' ')[0].toLowerCase()) ||
+            selectedService.name.toLowerCase().includes(specialty.toLowerCase())
+          )
+        );
+        // If no stylists match, show all stylists as fallback
+        return matched.length > 0 ? matched : stylistsWithImages;
+      })()
     : stylistsWithImages;
 
   return (
