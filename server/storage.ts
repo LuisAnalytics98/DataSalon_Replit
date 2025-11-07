@@ -82,6 +82,9 @@ export interface IStorage {
   getBookingsBySalon(salonId: string): Promise<BookingWithDetails[]>;
   updateBookingStatus(data: UpdateBookingStatus, salonId: string): Promise<Booking | undefined>;
   updateBookingCompletion(id: string, salonId: string, data: UpdateBookingCompletion): Promise<Booking | undefined>;
+  updateBookingToken(id: string, token: string, expiry: Date): Promise<Booking | undefined>;
+  confirmBookingByToken(id: string, token: string): Promise<Booking | undefined>;
+  cancelBookingByToken(id: string, token: string): Promise<Booking | undefined>;
   
   // Stylist Availability
   getStylistAvailability(stylistId: string): Promise<StylistAvailability[]>;
@@ -369,6 +372,65 @@ export class DbStorage implements IStorage {
         finalPrice: data.finalPrice,
       })
       .where(and(eq(bookings.id, id), eq(bookings.salonId, salonId)))
+      .returning();
+    return booking;
+  }
+
+  async updateBookingToken(id: string, token: string, expiry: Date): Promise<Booking | undefined> {
+    const [booking] = await db.update(bookings)
+      .set({ 
+        confirmationToken: token,
+        tokenExpiry: expiry,
+      })
+      .where(eq(bookings.id, id))
+      .returning();
+    return booking;
+  }
+
+  async confirmBookingByToken(id: string, token: string): Promise<Booking | undefined> {
+    // Verify token and expiry
+    const [existing] = await db.select().from(bookings).where(eq(bookings.id, id));
+    
+    if (!existing || existing.confirmationToken !== token) {
+      return undefined;
+    }
+    
+    if (existing.tokenExpiry && new Date() > existing.tokenExpiry) {
+      return undefined; // Token expired
+    }
+    
+    // Update status to confirmed
+    const [booking] = await db.update(bookings)
+      .set({ 
+        status: 'confirmed',
+        confirmationToken: null, // Clear token after use
+        tokenExpiry: null,
+      })
+      .where(eq(bookings.id, id))
+      .returning();
+    return booking;
+  }
+
+  async cancelBookingByToken(id: string, token: string): Promise<Booking | undefined> {
+    // Verify token and expiry
+    const [existing] = await db.select().from(bookings).where(eq(bookings.id, id));
+    
+    if (!existing || existing.confirmationToken !== token) {
+      return undefined;
+    }
+    
+    if (existing.tokenExpiry && new Date() > existing.tokenExpiry) {
+      return undefined; // Token expired
+    }
+    
+    // Update status to cancelled
+    const [booking] = await db.update(bookings)
+      .set({ 
+        status: 'cancelled',
+        confirmationToken: null, // Clear token after use
+        tokenExpiry: null,
+      })
+      .where(eq(bookings.id, id))
       .returning();
     return booking;
   }

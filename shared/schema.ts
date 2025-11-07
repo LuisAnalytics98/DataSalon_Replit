@@ -94,6 +94,8 @@ export const bookings = pgTable("bookings", {
   appointmentTime: text("appointment_time").notNull(),
   status: text("status").notNull().default("backlog"),
   finalPrice: integer("final_price"), // Final price set by employee upon completion
+  confirmationToken: varchar("confirmation_token"), // Token for email confirmation/cancellation
+  tokenExpiry: timestamp("token_expiry"), // Expiry time for confirmation token
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

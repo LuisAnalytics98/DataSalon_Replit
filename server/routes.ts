@@ -18,6 +18,8 @@ import {
 import type { Salon } from "@shared/schema";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
+import { sendBookingConfirmationEmail } from "./emailService";
+import crypto from "crypto";
 
 // Extend Express types for authentication and salon context
 declare global {
@@ -197,7 +199,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       const booking = await storage.createBooking(bookingData, req.salon!.id);
+      
+      // Generate confirmation token
+      const confirmToken = crypto.randomBytes(32).toString('hex');
+      const tokenExpiry = new Date();
+      tokenExpiry.setHours(tokenExpiry.getHours() + 48); // Token expires in 48 hours
+      
+      await storage.updateBookingToken(booking.id, confirmToken, tokenExpiry);
+      
       const bookingWithDetails = await storage.getBookingById(booking.id);
+
+      // Send confirmation email asynchronously (don't block response)
+      if (bookingWithDetails) {
+        sendBookingConfirmationEmail(bookingWithDetails, req.salon!, confirmToken)
+          .catch(err => console.error('Error sending confirmation email:', err));
+      }
 
       res.json(bookingWithDetails);
     } catch (error) {
@@ -228,6 +244,236 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating inquiry:", error);
       res.status(400).json({ error: "Failed to create inquiry" });
+    }
+  });
+
+  // Confirm booking via email link (public)
+  app.get("/api/bookings/:id/confirm", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { token } = req.query;
+      
+      if (!token || typeof token !== 'string') {
+        return res.status(400).send(`
+          <!DOCTYPE html>
+          <html lang="es">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Error - Token Inválido</title>
+            <style>
+              body { font-family: 'Inter', sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background-color: #f8f9fa; }
+              .container { max-width: 500px; background: white; padding: 40px; border-radius: 8px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+              h1 { color: #dc3545; margin-bottom: 20px; }
+              p { color: #666; line-height: 1.6; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <h1>❌ Token Inválido</h1>
+              <p>El enlace de confirmación es inválido. Por favor contacta al salón.</p>
+            </div>
+          </body>
+          </html>
+        `);
+      }
+      
+      const booking = await storage.confirmBookingByToken(id, token);
+      
+      if (!booking) {
+        return res.status(400).send(`
+          <!DOCTYPE html>
+          <html lang="es">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Error - Enlace Expirado</title>
+            <style>
+              body { font-family: 'Inter', sans-serif; display: flex; justify-center; align-items: center; min-height: 100vh; margin: 0; background-color: #f8f9fa; }
+              .container { max-width: 500px; background: white; padding: 40px; border-radius: 8px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+              h1 { color: #dc3545; margin-bottom: 20px; }
+              p { color: #666; line-height: 1.6; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <h1>⏱️ Enlace Expirado</h1>
+              <p>Este enlace de confirmación ha expirado o ya ha sido utilizado. Por favor contacta al salón para más ayuda.</p>
+            </div>
+          </body>
+          </html>
+        `);
+      }
+      
+      res.send(`
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Cita Confirmada</title>
+          <style>
+            body { font-family: 'Inter', sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background-color: #f8f9fa; }
+            .container { max-width: 500px; background: white; padding: 40px; border-radius: 8px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+            h1 { color: #28a745; margin-bottom: 20px; font-family: 'Playfair Display', serif; }
+            .icon { font-size: 64px; margin-bottom: 20px; }
+            p { color: #666; line-height: 1.6; margin-bottom: 15px; }
+            .reference { background-color: #f8f9fa; padding: 15px; border-radius: 6px; margin-top: 20px; }
+            .reference strong { color: #1a1a1a; font-size: 18px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="icon">✅</div>
+            <h1>¡Cita Confirmada!</h1>
+            <p>Tu cita ha sido confirmada exitosamente.</p>
+            <div class="reference">
+              <strong>Referencia: ${booking.bookingReference}</strong>
+            </div>
+            <p style="margin-top: 20px; font-size: 14px; color: #999;">Recibirás un recordatorio antes de tu cita.</p>
+          </div>
+        </body>
+        </html>
+      `);
+    } catch (error) {
+      console.error("Error confirming booking:", error);
+      res.status(500).send(`
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Error</title>
+          <style>
+            body { font-family: 'Inter', sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background-color: #f8f9fa; }
+            .container { max-width: 500px; background: white; padding: 40px; border-radius: 8px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+            h1 { color: #dc3545; margin-bottom: 20px; }
+            p { color: #666; line-height: 1.6; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h1>❌ Error</h1>
+            <p>Hubo un error al confirmar tu cita. Por favor intenta nuevamente o contacta al salón.</p>
+          </div>
+        </body>
+        </html>
+      `);
+    }
+  });
+
+  // Cancel booking via email link (public)
+  app.get("/api/bookings/:id/cancel", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { token } = req.query;
+      
+      if (!token || typeof token !== 'string') {
+        return res.status(400).send(`
+          <!DOCTYPE html>
+          <html lang="es">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Error - Token Inválido</title>
+            <style>
+              body { font-family: 'Inter', sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background-color: #f8f9fa; }
+              .container { max-width: 500px; background: white; padding: 40px; border-radius: 8px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+              h1 { color: #dc3545; margin-bottom: 20px; }
+              p { color: #666; line-height: 1.6; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <h1>❌ Token Inválido</h1>
+              <p>El enlace de cancelación es inválido. Por favor contacta al salón.</p>
+            </div>
+          </body>
+          </html>
+        `);
+      }
+      
+      const booking = await storage.cancelBookingByToken(id, token);
+      
+      if (!booking) {
+        return res.status(400).send(`
+          <!DOCTYPE html>
+          <html lang="es">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Error - Enlace Expirado</title>
+            <style>
+              body { font-family: 'Inter', sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background-color: #f8f9fa; }
+              .container { max-width: 500px; background: white; padding: 40px; border-radius: 8px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+              h1 { color: #dc3545; margin-bottom: 20px; }
+              p { color: #666; line-height: 1.6; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <h1>⏱️ Enlace Expirado</h1>
+              <p>Este enlace de cancelación ha expirado o ya ha sido utilizado. Por favor contacta al salón para más ayuda.</p>
+            </div>
+          </body>
+          </html>
+        `);
+      }
+      
+      res.send(`
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Cita Cancelada</title>
+          <style>
+            body { font-family: 'Inter', sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background-color: #f8f9fa; }
+            .container { max-width: 500px; background: white; padding: 40px; border-radius: 8px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+            h1 { color: #666; margin-bottom: 20px; font-family: 'Playfair Display', serif; }
+            .icon { font-size: 64px; margin-bottom: 20px; }
+            p { color: #666; line-height: 1.6; margin-bottom: 15px; }
+            .reference { background-color: #f8f9fa; padding: 15px; border-radius: 6px; margin-top: 20px; }
+            .reference strong { color: #1a1a1a; font-size: 18px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="icon">✅</div>
+            <h1>Cita Cancelada</h1>
+            <p>Tu cita ha sido cancelada exitosamente.</p>
+            <div class="reference">
+              <strong>Referencia: ${booking.bookingReference}</strong>
+            </div>
+            <p style="margin-top: 20px; font-size: 14px; color: #999;">Si deseas reagendar, por favor visita nuestro sitio web.</p>
+          </div>
+        </body>
+        </html>
+      `);
+    } catch (error) {
+      console.error("Error canceling booking:", error);
+      res.status(500).send(`
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Error</title>
+          <style>
+            body { font-family: 'Inter', sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background-color: #f8f9fa; }
+            .container { max-width: 500px; background: white; padding: 40px; border-radius: 8px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+            h1 { color: #dc3545; margin-bottom: 20px; }
+            p { color: #666; line-height: 1.6; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h1>❌ Error</h1>
+            <p>Hubo un error al cancelar tu cita. Por favor intenta nuevamente o contacta al salón.</p>
+          </div>
+        </body>
+        </html>
+      `);
     }
   });
 
