@@ -44,6 +44,7 @@ Core data models include `salons` (multi-tenancy), `users`, and `salon_users` (f
 - **Stylist-to-User Linking:** Allows linking stylist profiles to user accounts for system access.
 - **Marketing Landing Page:** Root path `/` features a marketing page with an inquiry form for salon owners.
 - **Professional Filtering:** Stylist selection automatically filters professionals by service specialties, with fallback to show all professionals if no specialty match is found.
+- **Email Confirmation System:** Automated email confirmations sent to both client and salon admin upon booking creation. Emails contain booking details, salon contact information, and secure confirm/cancel action links. Uses Resend API for reliable transactional email delivery. Confirmation tokens are cryptographically secure (32-byte hex), expire after 48 hours, and are single-use. Public endpoints `/api/bookings/:id/confirm` and `/api/bookings/:id/cancel` handle token validation and return branded HTML success/error pages in Spanish.
 
 ## External Dependencies
 
@@ -54,4 +55,5 @@ Core data models include `salons` (multi-tenancy), `users`, and `salon_users` (f
 - **Database & ORM:** Drizzle ORM, Drizzle Kit, @neondatabase/serverless, ws
 - **Authentication & Session:** Replit Auth (OIDC), openid-client, express-session, connect-pg-simple, Passport.js
 - **Object Storage:** @google-cloud/storage (for Replit Object Storage), Uppy Core, Uppy AWS S3 plugin
+- **Email Service:** Resend API for transactional emails
 - **Fonts:** Google Fonts API (Playfair Display, Inter)
