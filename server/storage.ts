@@ -179,8 +179,8 @@ export class DbStorage implements IStorage {
   }
 
   async deleteSalon(id: string): Promise<boolean> {
-    const result = await db.delete(salons).where(eq(salons.id, id));
-    return result.rowCount !== null && result.rowCount > 0;
+    const result = await db.delete(salons).where(eq(salons.id, id)).returning();
+    return result.length > 0;
   }
 
   // Salon Users
@@ -211,8 +211,9 @@ export class DbStorage implements IStorage {
 
   async deleteSalonUser(userId: string, salonId: string): Promise<boolean> {
     const result = await db.delete(salonUsers)
-      .where(and(eq(salonUsers.userId, userId), eq(salonUsers.salonId, salonId)));
-    return result.rowCount !== null && result.rowCount > 0;
+      .where(and(eq(salonUsers.userId, userId), eq(salonUsers.salonId, salonId)))
+      .returning();
+    return result.length > 0;
   }
 
   // Super Admin User Management
@@ -256,8 +257,9 @@ export class DbStorage implements IStorage {
 
   async deleteService(id: string, salonId: string): Promise<boolean> {
     const result = await db.delete(services)
-      .where(and(eq(services.id, id), eq(services.salonId, salonId)));
-    return result.rowCount !== null && result.rowCount > 0;
+      .where(and(eq(services.id, id), eq(services.salonId, salonId)))
+      .returning();
+    return result.length > 0;
   }
 
   // Stylists (now salon-scoped)
@@ -290,8 +292,9 @@ export class DbStorage implements IStorage {
 
   async deleteStylist(id: string, salonId: string): Promise<boolean> {
     const result = await db.delete(stylists)
-      .where(and(eq(stylists.id, id), eq(stylists.salonId, salonId)));
-    return result.rowCount !== null && result.rowCount > 0;
+      .where(and(eq(stylists.id, id), eq(stylists.salonId, salonId)))
+      .returning();
+    return result.length > 0;
   }
 
   // Bookings (now salon-scoped)
@@ -459,8 +462,9 @@ export class DbStorage implements IStorage {
 
   async deleteStylistAvailability(id: number): Promise<boolean> {
     const result = await db.delete(stylistAvailability)
-      .where(eq(stylistAvailability.id, id));
-    return result.rowCount !== null && result.rowCount > 0;
+      .where(eq(stylistAvailability.id, id))
+      .returning();
+    return result.length > 0;
   }
 
   async setStylistAvailability(stylistId: string, salonId: string, availabilityList: InsertStylistAvailability[]): Promise<StylistAvailability[]> {

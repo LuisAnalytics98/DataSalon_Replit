@@ -16,7 +16,7 @@ import {
   insertSalonUserSchema,
   insertSalonInquirySchema,
 } from "@shared/schema";
-import type { Salon } from "@shared/schema";
+import type { Salon, InsertSalon } from "@shared/schema";
 // Use Supabase Storage instead of Replit Object Storage
 import { supabaseStorage, ObjectNotFoundError } from "./supabaseStorage";
 import { ObjectPermission } from "./objectAcl";
@@ -847,15 +847,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const userId = req.user?.id;
+      let objectPath = req.body.imageUrl;
       
       // Set ACL policy for the uploaded image (public visibility for service images)
-      const objectPath = await supabaseStorage.trySetObjectEntityAclPolicy(
-        req.body.imageUrl,
-        {
-          owner: userId,
-          visibility: "public",
-        }
-      );
+      if (userId) {
+        objectPath = await supabaseStorage.trySetObjectEntityAclPolicy(
+          req.body.imageUrl,
+          {
+            owner: userId,
+            visibility: "public",
+          }
+        );
+      }
 
       // Update service with image URL
       const service = await storage.updateService(req.params.id, req.salon!.id, { imageUrl: objectPath });
@@ -878,15 +881,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const userId = req.user?.id;
+      let objectPath = req.body.imageUrl;
       
       // Set ACL policy for the uploaded image (public visibility for stylist images)
-      const objectPath = await supabaseStorage.trySetObjectEntityAclPolicy(
-        req.body.imageUrl,
-        {
-          owner: userId,
-          visibility: "public",
-        }
-      );
+      if (userId) {
+        objectPath = await supabaseStorage.trySetObjectEntityAclPolicy(
+          req.body.imageUrl,
+          {
+            owner: userId,
+            visibility: "public",
+          }
+        );
+      }
 
       // Update stylist with image URL
       const stylist = await storage.updateStylist(req.params.id, req.salon!.id, { imageUrl: objectPath });

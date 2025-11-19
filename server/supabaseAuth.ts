@@ -228,7 +228,7 @@ export async function setupAuth(app: Express) {
       }
 
       // Get user from our database
-      const dbUser = await storage.getUserById(user.id);
+      const dbUser = await storage.getUser(user.id);
       
       res.json({
         id: user.id,
