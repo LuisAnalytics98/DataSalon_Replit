@@ -8,12 +8,14 @@ import Home from "@/pages/Home";
 import Admin from "@/pages/Admin";
 import Employee from "@/pages/Employee";
 import SuperAdmin from "@/pages/SuperAdmin";
+import Login from "@/pages/Login";
 import NotFound from "@/pages/not-found";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Landing} />
+      <Route path="/login" component={Login} />
       <Route path="/book/:salonSlug" component={Home} />
       <Route path="/admin" component={Admin} />
       <Route path="/employee" component={Employee} />

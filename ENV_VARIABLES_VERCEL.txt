@@ -1,0 +1,23 @@
+# Copy these environment variables to Vercel Dashboard
+# Settings → Environment Variables → Add each one
+
+SUPABASE_URL=https://ujgdkuhztbtzseqotbpe.supabase.co
+
+SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVqZ2RrdWh6dGJ0enNlcW90YnBlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM1MTYzNzksImV4cCI6MjA3OTA5MjM3OX0.CIIEmVlXpOILr8Fr_oAfm0FpqYT75l9GANvmh2l2kok
+
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVqZ2RrdWh6dGJ0enNlcW90YnBlIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MzUxNjM3OSwiZXhwIjoyMDc5MDkyMzc5fQ.fYA8lCooNzX4jGhXcnV51TY0BQKVwoEMwuel_QG3q3I
+
+SUPABASE_STORAGE_BUCKET=salon-assets
+
+DATABASE_URL=postgresql://postgres.ujgdkuhztbtzseqotbpe:Comearroz.98@aws-1-us-west-1.pooler.supabase.com:5432/postgres
+
+SESSION_SECRET=b07e7d58871c97701fe35fda7b5ec3bdc92862d94b79830bf2b474b5940d1f15
+
+NODE_ENV=production
+
+PORT=5000
+
+SUPER_ADMIN_EMAIL=datasalon98@gmail.com
+
+RESEND_API_KEY=your-resend-api-key
+

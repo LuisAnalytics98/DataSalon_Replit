@@ -1,6 +1,19 @@
+import { config } from "dotenv";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+
+// Load .env.local file
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+config({ path: join(__dirname, "..", ".env.local") });
+
+// Set NODE_ENV if not already set
+if (!process.env.NODE_ENV) {
+  process.env.NODE_ENV = "development";
+}
 
 const app = express();
 
@@ -71,11 +84,7 @@ app.use((req, res, next) => {
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
   const port = parseInt(process.env.PORT || '5000', 10);
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
+  server.listen(port, "0.0.0.0", () => {
     log(`serving on port ${port}`);
   });
 })();

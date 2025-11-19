@@ -1,7 +1,8 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+// Use Supabase Auth instead of Replit Auth
+import { setupAuth, isAuthenticated } from "./supabaseAuth";
 import { seedDemoSalon, ensureUserHasDemoSalonAccess } from "./seed";
 import { 
   insertClientSchema, 
@@ -16,7 +17,8 @@ import {
   insertSalonInquirySchema,
 } from "@shared/schema";
 import type { Salon } from "@shared/schema";
-import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
+// Use Supabase Storage instead of Replit Object Storage
+import { supabaseStorage, ObjectNotFoundError } from "./supabaseStorage";
 import { ObjectPermission } from "./objectAcl";
 import { sendBookingConfirmationEmail } from "./emailService";
 import crypto from "crypto";
@@ -63,7 +65,8 @@ async function resolveSalonSlug(req: Request, res: Response, next: NextFunction)
 // Middleware to check user has access to their salon and attach role
 async function requireSalonMembership(req: Request, res: Response, next: NextFunction) {
   try {
-    const userId = req.user?.claims?.sub;
+    // Supabase auth: user ID is directly on req.user.id
+    const userId = req.user?.id;
     if (!userId) {
       return res.status(401).json({ error: "Authentication required" });
     }
@@ -99,7 +102,8 @@ function requireRole(...allowedRoles: Array<"owner" | "admin" | "employee">) {
 
 // Middleware to check if user is super admin
 function requireSuperAdmin(req: Request, res: Response, next: NextFunction) {
-  const userEmail = req.user?.claims?.email;
+  // Supabase auth: email is directly on req.user.email
+  const userEmail = req.user?.email;
   if (!userEmail) {
     return res.status(401).json({ error: "Authentication required" });
   }
@@ -117,8 +121,8 @@ function requireSuperAdmin(req: Request, res: Response, next: NextFunction) {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Setup Replit authentication
-  setupAuth(app);
+  // Setup Supabase authentication
+  await setupAuth(app);
 
   // Seed demo salon on startup
   await seedDemoSalon();
@@ -531,7 +535,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get current user's stylist profile (if exists)
   app.get("/api/admin/my-stylist", isAuthenticated, requireSalonMembership, async (req, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = req.user?.id;
       if (!userId) {
         return res.status(401).json({ error: "Authentication required" });
       }
@@ -551,7 +555,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // If user is an employee, filter to only their bookings
       if (req.userRole === "employee") {
-        const userId = req.user?.claims?.sub;
+        const userId = req.user?.id;
         if (userId) {
           const stylist = await storage.getStylistByUserId(userId);
           if (stylist) {
@@ -803,8 +807,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get presigned upload URL for object entity
   app.post("/api/objects/upload", isAuthenticated, async (req, res) => {
     try {
-      const objectStorageService = new ObjectStorageService();
-      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+      const uploadURL = await supabaseStorage.getObjectEntityUploadURL();
       res.json({ uploadURL });
     } catch (error) {
       console.error("Error getting upload URL:", error);
@@ -814,19 +817,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Serve uploaded images with ACL check
   app.get("/objects/:objectPath(*)", isAuthenticated, async (req, res) => {
-    const userId = req.user?.claims?.sub;
-    const objectStorageService = new ObjectStorageService();
+    const userId = req.user?.id;
     try {
-      const objectFile = await objectStorageService.getObjectEntityFile(req.path);
-      const canAccess = await objectStorageService.canAccessObjectEntity({
-        objectFile,
+      const objectPath = await supabaseStorage.getObjectEntityPath(req.path);
+      const canAccess = await supabaseStorage.canAccessObjectEntity({
+        objectPath: req.path,
         userId: userId,
         requestedPermission: ObjectPermission.READ,
       });
       if (!canAccess) {
         return res.sendStatus(401);
       }
-      objectStorageService.downloadObject(objectFile, res);
+      // Download object (isPublic determined by bucket policy)
+      await supabaseStorage.downloadObject(objectPath, res, 3600, true);
     } catch (error) {
       console.error("Error checking object access:", error);
       if (error instanceof ObjectNotFoundError) {
@@ -843,11 +846,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "imageUrl is required" });
       }
 
-      const userId = req.user?.claims?.sub;
-      const objectStorageService = new ObjectStorageService();
+      const userId = req.user?.id;
       
       // Set ACL policy for the uploaded image (public visibility for service images)
-      const objectPath = await objectStorageService.trySetObjectEntityAclPolicy(
+      const objectPath = await supabaseStorage.trySetObjectEntityAclPolicy(
         req.body.imageUrl,
         {
           owner: userId,
@@ -875,11 +877,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "imageUrl is required" });
       }
 
-      const userId = req.user?.claims?.sub;
-      const objectStorageService = new ObjectStorageService();
+      const userId = req.user?.id;
       
       // Set ACL policy for the uploaded image (public visibility for stylist images)
-      const objectPath = await objectStorageService.trySetObjectEntityAclPolicy(
+      const objectPath = await supabaseStorage.trySetObjectEntityAclPolicy(
         req.body.imageUrl,
         {
           owner: userId,
