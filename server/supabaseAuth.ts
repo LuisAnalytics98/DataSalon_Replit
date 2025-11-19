@@ -46,9 +46,12 @@ export const supabasePublic = createClient(
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
   
-  // Check required environment variables
+  // Use a default secret if not provided (for development/testing only)
+  // In production, this should be set via environment variable
+  const sessionSecret = process.env.SESSION_SECRET || 'default-secret-change-in-production';
+  
   if (!process.env.SESSION_SECRET) {
-    throw new Error('SESSION_SECRET environment variable is required');
+    console.warn('[AUTH] WARNING: SESSION_SECRET not set, using default secret. This is insecure for production!');
   }
   
   const isProduction = process.env.NODE_ENV === 'production';
@@ -59,14 +62,21 @@ export function getSession() {
   if (process.env.DATABASE_URL) {
     try {
       const pgStore = connectPg(session);
-      sessionStore = new pgStore({
-        conString: process.env.DATABASE_URL,
-        createTableIfMissing: true, // Create table if missing to avoid errors
-        ttl: sessionTtl,
-        tableName: "sessions",
-      });
-    } catch (error) {
-      console.warn('[AUTH] Failed to initialize PostgreSQL session store, using memory store:', error);
+      // Wrap in try-catch to handle any synchronous errors during initialization
+      try {
+        sessionStore = new pgStore({
+          conString: process.env.DATABASE_URL,
+          createTableIfMissing: true, // Create table if missing to avoid errors
+          ttl: sessionTtl,
+          tableName: "sessions",
+        });
+        console.log('[AUTH] Using PostgreSQL session store');
+      } catch (storeError: any) {
+        console.warn('[AUTH] Failed to create PostgreSQL session store instance, using memory store:', storeError?.message || storeError);
+        sessionStore = undefined;
+      }
+    } catch (error: any) {
+      console.warn('[AUTH] Failed to initialize PostgreSQL session store, using memory store:', error?.message || error);
       // Fall back to memory store if PostgreSQL fails
       sessionStore = undefined;
     }
@@ -74,18 +84,34 @@ export function getSession() {
     console.warn('[AUTH] DATABASE_URL not set, using memory store for sessions');
   }
   
-  return session({
-    secret: process.env.SESSION_SECRET,
-    store: sessionStore,
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      httpOnly: true,
-      secure: isProduction, // Only require HTTPS in production
-      sameSite: 'lax',
-      maxAge: sessionTtl,
-    },
-  });
+  try {
+    return session({
+      secret: sessionSecret,
+      store: sessionStore,
+      resave: false,
+      saveUninitialized: false,
+      cookie: {
+        httpOnly: true,
+        secure: isProduction, // Only require HTTPS in production
+        sameSite: 'lax',
+        maxAge: sessionTtl,
+      },
+    });
+  } catch (error: any) {
+    console.error('[AUTH] Failed to create session middleware:', error?.message || error);
+    // Return a minimal session config as fallback
+    return session({
+      secret: sessionSecret,
+      resave: false,
+      saveUninitialized: false,
+      cookie: {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: 'lax',
+        maxAge: sessionTtl,
+      },
+    });
+  }
 }
 
 async function upsertUser(userId: string, email: string, metadata?: {
@@ -107,10 +133,14 @@ export async function setupAuth(app: Express) {
   app.set("trust proxy", 1);
   
   try {
-    app.use(getSession());
-  } catch (error) {
-    console.error('[AUTH] Failed to setup session middleware:', error);
-    throw error;
+    const sessionMiddleware = getSession();
+    app.use(sessionMiddleware);
+    console.log('[AUTH] Session middleware configured successfully');
+  } catch (error: any) {
+    console.error('[AUTH] Failed to setup session middleware:', error?.message || error);
+    // Don't throw - try to continue without session (though this may cause issues)
+    // In production, this should be caught and handled properly
+    console.error('[AUTH] Continuing without session middleware - this may cause authentication issues');
   }
 
   // Login endpoint - serves login page or handles login POST

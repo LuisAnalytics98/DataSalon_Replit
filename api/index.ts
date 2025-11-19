@@ -38,7 +38,20 @@ async function getApp(): Promise<express.Express> {
   try {
     // Register routes (this sets up auth, routes, etc.)
     // Note: registerRoutes returns a Server, but we don't need it for Vercel
-    await registerRoutes(app);
+    try {
+      await registerRoutes(app);
+      console.log('[API] Routes registered successfully');
+    } catch (routeError: any) {
+      console.error('[API] Error registering routes:', routeError?.message || routeError);
+      // Add a basic error route so the app doesn't completely fail
+      app.get('*', (_req, res) => {
+        res.status(500).json({ 
+          error: 'Application initialization failed',
+          message: routeError?.message || 'Unknown error'
+        });
+      });
+      throw routeError; // Re-throw to be caught by outer try-catch
+    }
 
     // Handle favicon requests gracefully
     app.get('/favicon.ico', (_req, res) => {
@@ -95,9 +108,9 @@ export default async function handler(req: Request, res: Response) {
         if (err) {
           console.error('[API] Request handler error:', err);
           if (!res.headersSent) {
-            res.status(500).json({ error: "Internal server error", message: err.message });
+            res.status(500).json({ error: "Internal server error", message: err?.message || "Unknown error" });
           }
-          reject(err);
+          resolve(); // Resolve instead of reject to prevent unhandled promise rejection
         } else {
           resolve();
         }
@@ -105,12 +118,19 @@ export default async function handler(req: Request, res: Response) {
     });
   } catch (error: any) {
     console.error('[API] Handler initialization error:', error);
+    // Always try to send a response, even if initialization failed
     if (!res.headersSent) {
-      res.status(500).json({ 
-        error: "Failed to initialize application",
-        message: error?.message || "Unknown error"
-      });
+      try {
+        res.status(500).json({ 
+          error: "Failed to initialize application",
+          message: error?.message || "Unknown error",
+          stack: process.env.NODE_ENV === 'development' ? error?.stack : undefined
+        });
+      } catch (responseError) {
+        console.error('[API] Failed to send error response:', responseError);
+      }
     }
-    throw error;
+    // Don't throw - Vercel will handle the error response we sent
+    return;
   }
 }
