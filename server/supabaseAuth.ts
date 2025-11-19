@@ -45,18 +45,37 @@ export const supabasePublic = createClient(
 
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
-  const pgStore = connectPg(session);
-  const sessionStore = new pgStore({
-    conString: process.env.DATABASE_URL,
-    createTableIfMissing: false,
-    ttl: sessionTtl,
-    tableName: "sessions",
-  });
+  
+  // Check required environment variables
+  if (!process.env.SESSION_SECRET) {
+    throw new Error('SESSION_SECRET environment variable is required');
+  }
   
   const isProduction = process.env.NODE_ENV === 'production';
   
+  // Try to use PostgreSQL session store, fallback to memory store if DB connection fails
+  let sessionStore: any;
+  
+  if (process.env.DATABASE_URL) {
+    try {
+      const pgStore = connectPg(session);
+      sessionStore = new pgStore({
+        conString: process.env.DATABASE_URL,
+        createTableIfMissing: true, // Create table if missing to avoid errors
+        ttl: sessionTtl,
+        tableName: "sessions",
+      });
+    } catch (error) {
+      console.warn('[AUTH] Failed to initialize PostgreSQL session store, using memory store:', error);
+      // Fall back to memory store if PostgreSQL fails
+      sessionStore = undefined;
+    }
+  } else {
+    console.warn('[AUTH] DATABASE_URL not set, using memory store for sessions');
+  }
+  
   return session({
-    secret: process.env.SESSION_SECRET!,
+    secret: process.env.SESSION_SECRET,
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
@@ -86,20 +105,41 @@ async function upsertUser(userId: string, email: string, metadata?: {
 
 export async function setupAuth(app: Express) {
   app.set("trust proxy", 1);
-  app.use(getSession());
+  
+  try {
+    app.use(getSession());
+  } catch (error) {
+    console.error('[AUTH] Failed to setup session middleware:', error);
+    throw error;
+  }
 
   // Login endpoint - serves login page or handles login POST
-  app.get("/api/login", (req, res) => {
-    // Save returnTo parameter to session for post-login redirect
-    if (req.query.returnTo && typeof req.query.returnTo === 'string') {
-      req.session.returnTo = req.query.returnTo as string;
-    }
+  app.get("/api/login", (req, res, next) => {
+    try {
+      // Save returnTo parameter to session for post-login redirect
+      if (req.query.returnTo && typeof req.query.returnTo === 'string') {
+        try {
+          req.session.returnTo = req.query.returnTo as string;
+        } catch (sessionError) {
+          // If session save fails, we'll use URL param instead
+          console.warn('[AUTH] Failed to save returnTo to session, will use URL param:', sessionError);
+        }
+      }
 
-    // For GET requests, redirect to a login page
-    // In a real app, you'd serve an HTML login form here
-    // For now, we'll use a simple approach: redirect to Supabase's hosted auth
-    // But email/password requires a form, so we'll handle it via POST
-    res.redirect("/login");
+      // Redirect to client-side login page
+      // Preserve returnTo in URL if session save failed or as backup
+      const returnTo = req.query.returnTo ? `?returnTo=${encodeURIComponent(req.query.returnTo as string)}` : '';
+      const loginUrl = `/login${returnTo}`;
+      res.redirect(loginUrl);
+    } catch (error) {
+      console.error('[AUTH] Error in login GET handler:', error);
+      // If redirect fails, try to send a JSON response instead
+      if (!res.headersSent) {
+        res.status(500).json({ error: "Failed to process login request" });
+      } else {
+        next(error);
+      }
+    }
   });
 
   // Handle login POST (email/password)

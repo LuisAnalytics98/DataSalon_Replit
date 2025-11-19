@@ -40,12 +40,21 @@ async function getApp(): Promise<express.Express> {
     // Note: registerRoutes returns a Server, but we don't need it for Vercel
     await registerRoutes(app);
 
+    // Handle favicon requests gracefully
+    app.get('/favicon.ico', (_req, res) => {
+      res.status(204).end(); // No content
+    });
+
     // Error handler
     app.use((err: any, _req: Request, res: Response, _next: any) => {
       const status = err.status || err.statusCode || 500;
       const message = err.message || "Internal Server Error";
       console.error('[API] Error:', err);
-      res.status(status).json({ message });
+      
+      // Don't send error response if headers already sent
+      if (!res.headersSent) {
+        res.status(status).json({ message });
+      }
     });
 
     // Serve static files in production (only if dist/public exists)
