@@ -4,8 +4,8 @@ import { config } from "dotenv";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import express, { type Request, Response } from 'express';
-import { registerRoutes } from '../server/routes';
-import { serveStatic } from '../server/vite';
+import { registerRoutes } from '../server/routes.js';
+import { serveStatic } from '../server/vite.js';
 
 // Load environment variables (Vercel provides these, but we load .env.local for local dev)
 const __filename = fileURLToPath(import.meta.url);
