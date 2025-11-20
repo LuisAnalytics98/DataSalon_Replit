@@ -10,7 +10,10 @@ export async function sendBookingConfirmationEmail(
 ): Promise<void> {
   const { client, fromEmail } = await getUncachableResendClient();
 
-  const baseUrl = process.env.REPLIT_DOMAINS
+  // Use Vercel URL if available, otherwise try Replit domains, fallback to localhost
+  const baseUrl = process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : process.env.REPLIT_DOMAINS
     ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
     : 'http://localhost:5000';
 
