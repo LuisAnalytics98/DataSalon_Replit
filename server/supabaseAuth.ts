@@ -5,7 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 import type { Express, RequestHandler } from "express";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
-import { storage } from "./storage";
+import { storage } from "./storage.js";
 
 // Load .env.local file FIRST
 const __filename = fileURLToPath(import.meta.url);

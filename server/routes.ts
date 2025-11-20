@@ -1,9 +1,9 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
+import { storage } from "./storage.js";
 // Use Supabase Auth instead of Replit Auth
-import { setupAuth, isAuthenticated } from "./supabaseAuth";
-import { seedDemoSalon, ensureUserHasDemoSalonAccess } from "./seed";
+import { setupAuth, isAuthenticated } from "./supabaseAuth.js";
+import { seedDemoSalon, ensureUserHasDemoSalonAccess } from "./seed.js";
 import { 
   insertClientSchema, 
   insertBookingSchema,
@@ -18,9 +18,9 @@ import {
 } from "@shared/schema";
 import type { Salon, InsertSalon } from "@shared/schema";
 // Use Supabase Storage instead of Replit Object Storage
-import { supabaseStorage, ObjectNotFoundError } from "./supabaseStorage";
-import { ObjectPermission } from "./objectAcl";
-import { sendBookingConfirmationEmail } from "./emailService";
+import { supabaseStorage, ObjectNotFoundError } from "./supabaseStorage.js";
+import { ObjectPermission } from "./objectAcl.js";
+import { sendBookingConfirmationEmail } from "./emailService.js";
 import crypto from "crypto";
 
 // Extend Express types for authentication and salon context

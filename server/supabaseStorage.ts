@@ -7,7 +7,7 @@ import { randomUUID } from "crypto";
 import {
   ObjectAclPolicy,
   ObjectPermission,
-} from "./objectAcl";
+} from "./objectAcl.js";
 
 // Load .env.local file FIRST
 const __filename = fileURLToPath(import.meta.url);

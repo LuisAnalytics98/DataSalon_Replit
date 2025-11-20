@@ -1,4 +1,4 @@
-import { getUncachableResendClient } from './resend';
+import { getUncachableResendClient } from './resend.js';
 import type { BookingWithDetails, Salon } from '@shared/schema';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';

@@ -1,4 +1,4 @@
-import { storage } from "./storage";
+import { storage } from "./storage.js";
 
 // Auto-link new users to demo salon during development/testing
 export async function ensureUserHasDemoSalonAccess(userId: string) {
