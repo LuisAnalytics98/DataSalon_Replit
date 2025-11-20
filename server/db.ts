@@ -4,7 +4,7 @@ import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import postgres from "postgres";
 import { drizzle } from 'drizzle-orm/postgres-js';
-import * as schema from "@shared/schema";
+import * as schema from "../shared/schema.js";
 
 // Load .env.local file FIRST (before checking DATABASE_URL)
 const __filename = fileURLToPath(import.meta.url);

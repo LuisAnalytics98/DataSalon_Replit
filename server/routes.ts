@@ -15,8 +15,8 @@ import {
   insertSalonSchema,
   insertSalonUserSchema,
   insertSalonInquirySchema,
-} from "@shared/schema";
-import type { Salon, InsertSalon } from "@shared/schema";
+} from "../shared/schema.js";
+import type { Salon, InsertSalon } from "../shared/schema.js";
 // Use Supabase Storage instead of Replit Object Storage
 import { supabaseStorage, ObjectNotFoundError } from "./supabaseStorage.js";
 import { ObjectPermission } from "./objectAcl.js";

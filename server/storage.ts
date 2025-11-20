@@ -30,7 +30,7 @@ import {
   salons,
   salonUsers,
   salonInquiries,
-} from "@shared/schema";
+} from "../shared/schema.js";
 import { db } from "./db.js";
 import { eq, and } from "drizzle-orm";
 
