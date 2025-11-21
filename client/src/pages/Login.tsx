@@ -253,7 +253,7 @@ export default function Login() {
               </form>
             </Form>
           ) : (
-            <Form {...registerForm}>
+            <Form {...registerForm} key="register-form">
               <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
@@ -266,9 +266,6 @@ export default function Login() {
                           <Input
                             placeholder="Juan"
                             {...field}
-                            value={field.value || ""}
-                            onChange={field.onChange}
-                            onBlur={field.onBlur}
                             disabled={isLoading}
                             autoComplete="given-name"
                           />
@@ -288,9 +285,6 @@ export default function Login() {
                           <Input
                             placeholder="Pérez"
                             {...field}
-                            value={field.value || ""}
-                            onChange={field.onChange}
-                            onBlur={field.onBlur}
                             disabled={isLoading}
                             autoComplete="family-name"
                           />
@@ -312,9 +306,6 @@ export default function Login() {
                           type="email"
                           placeholder="tu@email.com"
                           {...field}
-                          value={field.value || ""}
-                          onChange={field.onChange}
-                          onBlur={field.onBlur}
                           disabled={isLoading}
                           autoComplete="email"
                         />
@@ -335,9 +326,6 @@ export default function Login() {
                           type="password"
                           placeholder="••••••••"
                           {...field}
-                          value={field.value || ""}
-                          onChange={field.onChange}
-                          onBlur={field.onBlur}
                           disabled={isLoading}
                           autoComplete="new-password"
                         />
@@ -358,9 +346,6 @@ export default function Login() {
                           type="password"
                           placeholder="••••••••"
                           {...field}
-                          value={field.value || ""}
-                          onChange={field.onChange}
-                          onBlur={field.onBlur}
                           disabled={isLoading}
                           autoComplete="new-password"
                         />
