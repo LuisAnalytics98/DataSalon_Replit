@@ -174,7 +174,10 @@ export default function Login() {
           <div className="flex gap-2 mb-6 p-1 bg-muted rounded-lg">
             <button
               type="button"
-              onClick={() => setIsRegisterMode(false)}
+              onClick={() => {
+                setIsRegisterMode(false);
+                loginForm.reset();
+              }}
               className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
                 !isRegisterMode
                   ? "bg-background text-foreground shadow-sm"
@@ -185,7 +188,10 @@ export default function Login() {
             </button>
             <button
               type="button"
-              onClick={() => setIsRegisterMode(true)}
+              onClick={() => {
+                setIsRegisterMode(true);
+                registerForm.reset();
+              }}
               className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
                 isRegisterMode
                   ? "bg-background text-foreground shadow-sm"
@@ -260,7 +266,11 @@ export default function Login() {
                           <Input
                             placeholder="Juan"
                             {...field}
+                            value={field.value || ""}
+                            onChange={field.onChange}
+                            onBlur={field.onBlur}
                             disabled={isLoading}
+                            autoComplete="given-name"
                           />
                         </FormControl>
                         <FormMessage />
@@ -278,7 +288,11 @@ export default function Login() {
                           <Input
                             placeholder="Pérez"
                             {...field}
+                            value={field.value || ""}
+                            onChange={field.onChange}
+                            onBlur={field.onBlur}
                             disabled={isLoading}
+                            autoComplete="family-name"
                           />
                         </FormControl>
                         <FormMessage />
@@ -298,7 +312,11 @@ export default function Login() {
                           type="email"
                           placeholder="tu@email.com"
                           {...field}
+                          value={field.value || ""}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
                           disabled={isLoading}
+                          autoComplete="email"
                         />
                       </FormControl>
                       <FormMessage />
@@ -317,7 +335,11 @@ export default function Login() {
                           type="password"
                           placeholder="••••••••"
                           {...field}
+                          value={field.value || ""}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
                           disabled={isLoading}
+                          autoComplete="new-password"
                         />
                       </FormControl>
                       <FormMessage />
@@ -336,7 +358,11 @@ export default function Login() {
                           type="password"
                           placeholder="••••••••"
                           {...field}
+                          value={field.value || ""}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
                           disabled={isLoading}
+                          autoComplete="new-password"
                         />
                       </FormControl>
                       <FormMessage />
@@ -361,7 +387,10 @@ export default function Login() {
                 ¿No tienes cuenta?{" "}
                 <button
                   type="button"
-                  onClick={() => setIsRegisterMode(true)}
+                  onClick={() => {
+                    setIsRegisterMode(true);
+                    registerForm.reset();
+                  }}
                   className="text-primary hover:underline"
                 >
                   Registrarse por primera vez
@@ -372,7 +401,10 @@ export default function Login() {
                 ¿Ya tienes cuenta?{" "}
                 <button
                   type="button"
-                  onClick={() => setIsRegisterMode(false)}
+                  onClick={() => {
+                    setIsRegisterMode(false);
+                    loginForm.reset();
+                  }}
                   className="text-primary hover:underline"
                 >
                   Iniciar sesión
