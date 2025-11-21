@@ -172,6 +172,89 @@ export async function setupAuth(app: Express) {
     }
   });
 
+  // Handle registration POST (email/password)
+  app.post("/api/register", async (req, res, next) => {
+    try {
+      const { email, password, firstName, lastName } = req.body;
+
+      if (!email || !password) {
+        return res.status(400).json({ error: "Email and password are required" });
+      }
+
+      if (password.length < 6) {
+        return res.status(400).json({ error: "Password must be at least 6 characters" });
+      }
+
+      // Get the app URL from environment or construct from request
+      const appUrl = process.env.APP_URL || 
+                     (process.env.NODE_ENV === 'production' 
+                       ? `https://${req.get('host')}` 
+                       : `${req.protocol}://${req.get('host')}`);
+
+      // Get returnTo from session or default to /admin
+      const returnTo = req.session.returnTo || "/admin";
+      const confirmationRedirectUrl = `${appUrl}/api/callback?returnTo=${encodeURIComponent(returnTo)}`;
+
+      // Use Supabase Admin API to create user
+      const { data, error } = await supabaseAdmin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true, // Auto-confirm email (set to false if you want email confirmation)
+        user_metadata: {
+          first_name: firstName || '',
+          last_name: lastName || '',
+          full_name: firstName && lastName ? `${firstName} ${lastName}` : firstName || lastName || '',
+        },
+      });
+
+      if (error || !data.user) {
+        console.error('[AUTH] Registration error:', error);
+        return res.status(400).json({ error: error?.message || "Failed to create user" });
+      }
+
+      // Sign in the newly created user
+      const { data: signInData, error: signInError } = await supabaseAdmin.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (signInError || !signInData.session) {
+        console.error('[AUTH] Auto-login error after registration:', signInError);
+        // User was created but auto-login failed - they can log in manually
+        return res.status(201).json({ 
+          success: true, 
+          message: "Account created successfully. Please log in.",
+          redirectTo: "/login"
+        });
+      }
+
+      const { user, access_token, refresh_token } = signInData.session;
+
+      // Store tokens in session
+      req.session.supabaseAccessToken = access_token;
+      req.session.supabaseRefreshToken = refresh_token;
+
+      // Upsert user in our database
+      await upsertUser(
+        user.id,
+        user.email!,
+        {
+          firstName: firstName || user.user_metadata?.first_name || user.user_metadata?.full_name?.split(' ')[0],
+          lastName: lastName || user.user_metadata?.last_name || user.user_metadata?.full_name?.split(' ').slice(1).join(' '),
+          profileImageUrl: user.user_metadata?.avatar_url || user.user_metadata?.profile_image_url,
+        }
+      );
+
+      // Clear returnTo from session
+      delete req.session.returnTo;
+      
+      res.json({ success: true, redirectTo: returnTo });
+    } catch (error) {
+      console.error('[AUTH] Registration error:', error);
+      next(error);
+    }
+  });
+
   // Handle login POST (email/password)
   app.post("/api/login", async (req, res, next) => {
     try {
