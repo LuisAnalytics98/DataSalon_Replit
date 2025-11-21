@@ -1,0 +1,38 @@
+# Vercel Environment Variables - Copy & Paste List
+# Add these in Vercel Dashboard → Settings → Environment Variables
+
+# REQUIRED - Supabase
+SUPABASE_URL
+SUPABASE_ANON_KEY
+SUPABASE_SERVICE_ROLE_KEY
+SUPABASE_STORAGE_BUCKET
+
+# REQUIRED - Database
+DATABASE_URL
+
+# REQUIRED - Security
+SESSION_SECRET
+
+# REQUIRED - Application
+NODE_ENV=production
+
+# REQUIRED - Admin
+SUPER_ADMIN_EMAIL
+
+# OPTIONAL - Email Service
+RESEND_API_KEY
+
+# ============================================
+# Example Values (DO NOT USE THESE - GET YOUR OWN):
+# ============================================
+
+# SUPABASE_URL=https://ujgdkuhztbtzseqotbpe.supabase.co
+# SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+# SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+# SUPABASE_STORAGE_BUCKET=salon-assets
+# DATABASE_URL=postgresql://postgres.ujgdkuhztbtzseqotbpe:password@aws-1-us-west-1.pooler.supabase.com:5432/postgres
+# SESSION_SECRET=b07e7d58871c97701fe35fda7b5ec3bdc92862d94b79830bf2b474b5940d1f15
+# NODE_ENV=production
+# SUPER_ADMIN_EMAIL=datasalon98@gmail.com
+# RESEND_API_KEY=re_xxxxxxxxxxxxx
+

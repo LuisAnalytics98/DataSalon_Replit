@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage.js";
 // Use Supabase Auth instead of Replit Auth
-import { setupAuth, isAuthenticated } from "./supabaseAuth.js";
+import { setupAuth, isAuthenticated, supabaseAdmin } from "./supabaseAuth.js";
 import { seedDemoSalon, ensureUserHasDemoSalonAccess } from "./seed.js";
 import { 
   insertClientSchema, 
@@ -968,6 +968,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching users:", error);
       res.status(500).json({ error: "Failed to fetch users" });
+    }
+  });
+
+  // Invite a new user with email confirmation
+  app.post("/api/superadmin/users/invite", isAuthenticated, requireSuperAdmin, async (req, res) => {
+    try {
+      const { email, role, salonId, redirectTo = "/admin" } = req.body;
+
+      if (!email || !role || !salonId) {
+        return res.status(400).json({ error: "Email, role, and salonId are required" });
+      }
+
+      // Validate role
+      if (!["owner", "admin", "employee"].includes(role)) {
+        return res.status(400).json({ error: "Invalid role. Must be owner, admin, or employee" });
+      }
+
+      // Get the app URL from environment or construct from request
+      const appUrl = process.env.APP_URL || 
+                     (process.env.NODE_ENV === 'production' 
+                       ? `https://${req.get('host')}` 
+                       : `${req.protocol}://${req.get('host')}`);
+
+      // Construct the redirect URL for email confirmation
+      const confirmationRedirectUrl = `${appUrl}/api/callback?returnTo=${encodeURIComponent(redirectTo)}`;
+
+      // Invite user via Supabase Admin API
+      const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
+        email,
+        {
+          redirectTo: confirmationRedirectUrl,
+          data: {
+            role,
+            salonId,
+          }
+        }
+      );
+
+      if (inviteError) {
+        console.error("Error inviting user:", inviteError);
+        return res.status(400).json({ error: inviteError.message || "Failed to invite user" });
+      }
+
+      if (!inviteData.user) {
+        return res.status(500).json({ error: "User invitation failed - no user returned" });
+      }
+
+      // Link user to salon immediately (they'll be able to access after confirming email)
+      try {
+        const validatedSalonUser = insertSalonUserSchema.parse({
+          userId: inviteData.user.id,
+          salonId,
+          role,
+        });
+        await storage.createSalonUser(validatedSalonUser);
+      } catch (linkError) {
+        console.error("Error linking user to salon:", linkError);
+        // Don't fail the invitation if linking fails - can be done manually later
+        // But log it for admin to fix
+      }
+
+      res.json({
+        success: true,
+        user: {
+          id: inviteData.user.id,
+          email: inviteData.user.email,
+          role,
+          salonId,
+        },
+        message: "Invitation email sent successfully",
+      });
+    } catch (error) {
+      console.error("Error inviting user:", error);
+      res.status(500).json({ error: "Failed to invite user" });
     }
   });
 

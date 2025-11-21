@@ -13,6 +13,8 @@ After deploying to Vercel, you need to configure your Supabase project to allow 
 
 ## Step 2: Configure Supabase Auth Redirect URLs
 
+**IMPORTANT:** This step is critical for email confirmation links to work correctly!
+
 1. Go to your Supabase Dashboard: https://supabase.com/dashboard
 2. Select your project: **ujgdkuhztbtzseqotbpe**
 3. Navigate to: **Authentication** → **URL Configuration**
@@ -42,6 +44,8 @@ After deploying to Vercel, you need to configure your Supabase project to allow 
 
 ## Step 3: Configure Site URL
 
+**CRITICAL:** The Site URL is used by Supabase to generate email confirmation links. If this is wrong, users won't be able to confirm their emails!
+
 1. In the same **URL Configuration** page
 2. Find the **Site URL** field
 3. Set it to your production domain:
@@ -53,7 +57,14 @@ After deploying to Vercel, you need to configure your Supabase project to allow 
    https://yourdomain.com
    ```
 
-4. Click **Save**
+4. **For local development**, you can set it to:
+   ```
+   http://localhost:5000
+   ```
+
+5. Click **Save**
+
+**Note:** When inviting users, the confirmation email will use this Site URL. Make sure it matches your actual deployment URL!
 
 ## Step 4: Configure CORS (Optional but Recommended)
 

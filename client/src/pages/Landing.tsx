@@ -137,7 +137,7 @@ export default function Landing() {
             <div className="max-w-3xl mx-auto text-center">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm mb-6">
                 <CheckCircle2 className="w-4 h-4" />
-                Confiado por más de 500 Salones Premium
+                Confiado por Salones Premium
               </div>
 
               <h1 className="text-5xl md:text-6xl font-serif font-bold mb-6">
