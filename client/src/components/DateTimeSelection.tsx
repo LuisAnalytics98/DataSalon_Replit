@@ -31,12 +31,21 @@ export default function DateTimeSelection({ onContinue, initialDate, initialTime
     },
   });
 
-  // Fetch booked slots for the selected date
-  const { data: bookedSlotsData } = useQuery<{ availability: StylistAvailability[], bookedSlots: string[] }>({
+  // Fetch booked slots and blocked ranges for the selected date
+  const { data: bookedSlotsData } = useQuery<{ 
+    availability: StylistAvailability[], 
+    bookedSlots: string[],
+    blockedRanges?: Array<{
+      start: string;
+      startMinutes: number;
+      endMinutes: number;
+      duration: number;
+    }>
+  }>({
     queryKey: ["/api/public/stylists", stylistId, "availability", selectedDate?.toISOString(), salonSlug],
     enabled: !!stylistId && stylistId !== "any" && !!selectedDate,
     queryFn: async () => {
-      if (!stylistId || stylistId === "any" || !selectedDate) return { availability: [], bookedSlots: [] };
+      if (!stylistId || stylistId === "any" || !selectedDate) return { availability: [], bookedSlots: [], blockedRanges: [] };
       const dateStr = selectedDate.toISOString().split('T')[0];
       const response = await fetch(`/api/public/stylists/${stylistId}/availability?date=${dateStr}&salonSlug=${salonSlug}`);
       if (!response.ok) throw new Error("Failed to fetch booked slots");
@@ -45,6 +54,7 @@ export default function DateTimeSelection({ onContinue, initialDate, initialTime
   });
 
   const bookedSlots = bookedSlotsData?.bookedSlots || [];
+  const blockedRanges = bookedSlotsData?.blockedRanges || [];
 
   const timeSlots = [
     "9:00 AM", "9:30 AM", "10:00 AM", "10:30 AM", "11:00 AM", "11:30 AM",
@@ -155,9 +165,40 @@ export default function DateTimeSelection({ onContinue, initialDate, initialTime
     });
   }, [selectedDate, stylistId, availability, timeSlots]);
 
-  // Check if a time slot is booked
+  // Helper function to convert time slot string to minutes since midnight
+  // Handles both "9:00 AM" (12-hour) and "09:00" (24-hour) formats
+  const timeSlotToMinutes = (timeSlot: string): number => {
+    // Check if it's 24-hour format (HH:mm)
+    if (timeSlot.includes(':') && !timeSlot.includes('AM') && !timeSlot.includes('PM')) {
+      const [hours, minutes] = timeSlot.split(':').map(Number);
+      return hours * 60 + minutes;
+    }
+    // Handle 12-hour format (9:00 AM)
+    const [time, period] = timeSlot.split(' ');
+    let [hours, minutes] = time.split(':').map(Number);
+    if (period === 'PM' && hours !== 12) hours += 12;
+    if (period === 'AM' && hours === 12) hours = 0;
+    return hours * 60 + minutes;
+  };
+
+  // Check if a time slot is booked or overlaps with any blocked range
   const isTimeSlotBooked = (timeSlot: string) => {
-    return bookedSlots.includes(timeSlot);
+    // First check for exact match (backward compatibility)
+    if (bookedSlots.includes(timeSlot)) return true;
+    
+    // Check if time slot overlaps with any blocked range
+    const slotStartMinutes = timeSlotToMinutes(timeSlot);
+    const slotEndMinutes = slotStartMinutes + 30; // Each time slot is 30 minutes
+    
+    return blockedRanges.some((range) => {
+      // Use the pre-calculated minutes from the backend, or calculate if not available
+      const rangeStartMinutes = range.startMinutes ?? timeSlotToMinutes(range.start);
+      const rangeEndMinutes = range.endMinutes ?? (rangeStartMinutes + (range.duration || 60));
+      
+      // Check if the time slot overlaps with the blocked range
+      // Two ranges overlap if slotStart < rangeEnd AND rangeStart < slotEnd
+      return slotStartMinutes < rangeEndMinutes && rangeStartMinutes < slotEndMinutes;
+    });
   };
 
   // Clear selected time if it becomes booked

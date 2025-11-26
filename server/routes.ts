@@ -158,24 +158,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Helper function to convert time string (HH:mm or "9:00 AM") to minutes since midnight
+  const timeToMinutes = (timeStr: string): number => {
+    // Handle 24-hour format (HH:mm)
+    if (timeStr.includes(':') && !timeStr.includes('AM') && !timeStr.includes('PM')) {
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      return hours * 60 + minutes;
+    }
+    // Handle 12-hour format (9:00 AM)
+    const [time, period] = timeStr.split(' ');
+    let [hours, minutes] = time.split(':').map(Number);
+    if (period === 'PM' && hours !== 12) hours += 12;
+    if (period === 'AM' && hours === 12) hours = 0;
+    return hours * 60 + minutes;
+  };
+
+  // Helper function to check if two time ranges overlap
+  const timeRangesOverlap = (
+    start1: number, end1: number,
+    start2: number, end2: number
+  ): boolean => {
+    // Two ranges overlap if start1 < end2 AND start2 < end1
+    return start1 < end2 && start2 < end1;
+  };
+
   // Create a booking for a specific salon (public booking flow)
   app.post("/api/public/:salonSlug/bookings", resolveSalonSlug, async (req, res) => {
     try {
       const { clientInfo, serviceId, stylistId, date, time } = req.body;
+
+      // Get service to know its duration
+      const service = await storage.getServiceById(serviceId);
+      if (!service) {
+        return res.status(404).json({ error: "Service not found" });
+      }
 
       // Check if time slot is available (if stylist is specified)
       if (stylistId && stylistId !== "any") {
         const appointmentDate = new Date(date);
         const existingBookings = await storage.getBookingsBySalon(req.salon!.id);
         
-        // Check for conflicts with existing bookings for this stylist on the same date and time
+        // Convert new booking time to minutes
+        const newBookingStartMinutes = timeToMinutes(time);
+        const newBookingDuration = service.duration;
+        const newBookingEndMinutes = newBookingStartMinutes + newBookingDuration;
+        
+        // Check for conflicts with existing bookings for this stylist on the same date
         const hasConflict = existingBookings.some((booking: any) => {
+          if (booking.status === "cancelled") return false;
+          if (booking.stylistId !== stylistId) return false;
+          
           const bookingDate = new Date(booking.appointmentDate);
-          return (
-            booking.stylistId === stylistId &&
-            bookingDate.toDateString() === appointmentDate.toDateString() &&
-            booking.appointmentTime === time &&
-            booking.status !== "cancelled"
+          if (bookingDate.toDateString() !== appointmentDate.toDateString()) return false;
+          
+          // Get existing booking's service duration
+          const existingBookingDuration = booking.service?.duration || 60; // Default to 60 if not available
+          const existingBookingStartMinutes = timeToMinutes(booking.appointmentTime);
+          const existingBookingEndMinutes = existingBookingStartMinutes + existingBookingDuration;
+          
+          // Check if time ranges overlap
+          return timeRangesOverlap(
+            newBookingStartMinutes, newBookingEndMinutes,
+            existingBookingStartMinutes, existingBookingEndMinutes
           );
         });
 
@@ -216,7 +260,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Send confirmation email asynchronously (don't block response)
       if (bookingWithDetails) {
         sendBookingConfirmationEmail(bookingWithDetails, req.salon!, confirmToken)
-          .catch(err => console.error('Error sending confirmation email:', err));
+          .then(() => {
+            console.log(`✅ Booking confirmation emails sent successfully for booking ${booking.id}`);
+          })
+          .catch(err => {
+            console.error('❌ Error sending confirmation email:', err);
+            // Log detailed error information
+            if (err.response) {
+              console.error('Resend API Error Response:', JSON.stringify(err.response, null, 2));
+            }
+            if (err.message) {
+              console.error('Error Message:', err.message);
+            }
+          });
+      } else {
+        console.warn('⚠️ Booking created but bookingWithDetails is null, cannot send email');
       }
 
       res.json(bookingWithDetails);
@@ -757,8 +815,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         const allBookings = await storage.getBookingsBySalon(resolvedSalonId);
         
-        // Get bookings for this stylist on this date
-        const bookedSlots = allBookings
+        // Get bookings for this stylist on this date and calculate blocked time ranges
+        const blockedRanges = allBookings
           .filter((booking: any) => {
             const bookingDate = new Date(booking.appointmentDate);
             return (
@@ -767,11 +825,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
               booking.status !== "cancelled"
             );
           })
-          .map((booking: any) => booking.appointmentTime);
+          .map((booking: any) => {
+            const bookingStartMinutes = timeToMinutes(booking.appointmentTime);
+            const bookingDuration = booking.service?.duration || 60; // Default to 60 minutes if not available
+            const bookingEndMinutes = bookingStartMinutes + bookingDuration;
+            
+            return {
+              start: booking.appointmentTime, // Keep original format for backward compatibility
+              startMinutes: bookingStartMinutes,
+              endMinutes: bookingEndMinutes,
+              duration: bookingDuration,
+            };
+          });
+        
+        // Also return bookedSlots for backward compatibility (exact time matches)
+        const bookedSlots = blockedRanges.map((range: any) => range.start);
         
         res.json({ 
           availability, 
-          bookedSlots 
+          bookedSlots, // Backward compatibility
+          blockedRanges, // New: duration-based blocking
         });
       } else {
         res.json(availability);
