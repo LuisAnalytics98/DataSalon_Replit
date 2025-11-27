@@ -211,6 +211,7 @@ export default function Home() {
             initialTime={bookingData.time}
             stylistId={bookingData.stylistId}
             salonSlug={salonSlug}
+            serviceDuration={selectedService?.duration}
           />
         )}
 

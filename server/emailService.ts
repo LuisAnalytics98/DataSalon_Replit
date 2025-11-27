@@ -10,7 +10,24 @@ export async function sendBookingConfirmationEmail(
   confirmToken: string
 ): Promise<void> {
   try {
-    const { client, fromEmail } = await getUncachableResendClient();
+    // Validate that we have the necessary data
+    if (!booking.client?.email) {
+      throw new Error('Client email is missing from booking data');
+    }
+
+    let client, fromEmail;
+    try {
+      const resendClient = await getUncachableResendClient();
+      client = resendClient.client;
+      fromEmail = resendClient.fromEmail;
+      
+      if (!fromEmail || fromEmail === 'noreply@resend.dev') {
+        console.warn('⚠️ Using default Resend email address. Consider setting RESEND_FROM_EMAIL environment variable with a verified domain.');
+      }
+    } catch (error: any) {
+      console.error('❌ Failed to initialize Resend client:', error);
+      throw new Error(`Failed to initialize email service: ${error.message || 'Unknown error'}`);
+    }
 
   // Use Vercel URL if available, otherwise try Replit domains, fallback to localhost
   const baseUrl = process.env.VERCEL_URL
@@ -262,6 +279,7 @@ export async function sendBookingConfirmationEmail(
   `;
 
     // Send to client
+    console.log(`📧 Attempting to send confirmation email to client: ${booking.client.email}`);
     const clientEmailResult = await client.emails.send({
       from: fromEmail,
       to: booking.client.email,
@@ -270,20 +288,33 @@ export async function sendBookingConfirmationEmail(
     });
 
     if (clientEmailResult.error) {
-      console.error('Error sending email to client:', clientEmailResult.error);
-      throw new Error(`Failed to send email to client: ${clientEmailResult.error.message}`);
+      console.error('❌ Error sending email to client:', {
+        error: clientEmailResult.error,
+        email: booking.client.email,
+        bookingId: booking.id,
+      });
+      throw new Error(`Failed to send email to client: ${JSON.stringify(clientEmailResult.error)}`);
     }
-    console.log(`✅ Email sent to client: ${booking.client.email}`);
+    console.log(`✅ Email sent successfully to client: ${booking.client.email} (Email ID: ${clientEmailResult.data?.id || 'N/A'})`);
 
     // Get all salon owners and admins to send notification
-    const salonUsers = await storage.getSalonUsers(salon.id);
-    const adminEmails = salonUsers
-      .filter(su => su.role === 'owner' || su.role === 'admin')
-      .map(su => su.user?.email)
-      .filter((email): email is string => !!email);
+    let adminEmails: string[] = [];
+    try {
+      const salonUsers = await storage.getSalonUsers(salon.id);
+      adminEmails = salonUsers
+        .filter(su => (su.role === 'owner' || su.role === 'admin') && su.user?.email)
+        .map(su => su.user!.email)
+        .filter((email): email is string => !!email && email.trim().length > 0);
+      
+      console.log(`📧 Found ${adminEmails.length} admin/owner email(s) for salon ${salon.name}`);
+    } catch (error: any) {
+      console.error('❌ Error fetching salon users for email notification:', error);
+      // Don't throw - we can still send to the client even if admin emails fail
+    }
 
     // Send copy to all salon admins/owners (not salon.email)
     if (adminEmails.length > 0) {
+      console.log(`📧 Attempting to send notification emails to ${adminEmails.length} admin(s)/owner(s)`);
       const adminEmailPromises = adminEmails.map(async (adminEmail) => {
         try {
           const adminEmailResult = await client.emails.send({
@@ -294,14 +325,22 @@ export async function sendBookingConfirmationEmail(
           });
 
           if (adminEmailResult.error) {
-            console.error(`Error sending email to admin ${adminEmail}:`, adminEmailResult.error);
+            console.error(`❌ Error sending email to admin ${adminEmail}:`, {
+              error: adminEmailResult.error,
+              email: adminEmail,
+              bookingId: booking.id,
+            });
             return { success: false, email: adminEmail, error: adminEmailResult.error };
           }
-          console.log(`✅ Email sent to admin: ${adminEmail}`);
+          console.log(`✅ Email sent successfully to admin: ${adminEmail} (Email ID: ${adminEmailResult.data?.id || 'N/A'})`);
           return { success: true, email: adminEmail };
         } catch (error: any) {
-          console.error(`Error sending email to admin ${adminEmail}:`, error);
-          return { success: false, email: adminEmail, error: error.message };
+          console.error(`❌ Exception sending email to admin ${adminEmail}:`, {
+            error: error.message || error,
+            email: adminEmail,
+            bookingId: booking.id,
+          });
+          return { success: false, email: adminEmail, error: error.message || String(error) };
         }
       });
 
@@ -310,14 +349,27 @@ export async function sendBookingConfirmationEmail(
         .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
         .map(result => result.reason);
 
+      const successfulAdmins = adminResults
+        .filter((result): result is PromiseFulfilledResult<any> => 
+          result.status === 'fulfilled' && result.value.success
+        );
+
+      console.log(`📊 Admin email summary: ${successfulAdmins.length} succeeded, ${failedAdmins.length} failed`);
+
       if (failedAdmins.length > 0) {
         console.warn(`⚠️ Some admin emails failed to send:`, failedAdmins);
       }
     } else {
-        console.warn(`⚠️ No admin/owner emails found for salon ${salon.name}`);
+        console.warn(`⚠️ No admin/owner emails found for salon ${salon.name} (ID: ${salon.id}). Make sure salon users have email addresses.`);
     }
   } catch (error: any) {
-    console.error('❌ Error in sendBookingConfirmationEmail:', error);
+    console.error('❌ Error in sendBookingConfirmationEmail:', {
+      error: error.message || error,
+      stack: error.stack,
+      bookingId: booking.id,
+      clientEmail: booking.client?.email,
+      salonId: salon.id,
+    });
     throw error; // Re-throw to allow caller to handle
   }
 }

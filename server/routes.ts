@@ -174,11 +174,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   // Helper function to check if two time ranges overlap
+  // Uses [start, end) semantics where end is exclusive
+  // This allows back-to-back bookings where end1 == start2 (no overlap)
+  // Two ranges [start1, end1) and [start2, end2) overlap if:
+  //   start1 < end2 AND start2 < end1
   const timeRangesOverlap = (
     start1: number, end1: number,
     start2: number, end2: number
   ): boolean => {
     // Two ranges overlap if start1 < end2 AND start2 < end1
+    // Example: [10, 20) and [20, 30) don't overlap (back-to-back allowed)
+    //          [10, 20) and [15, 25) do overlap
     return start1 < end2 && start2 < end1;
   };
 
@@ -199,15 +205,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const existingBookings = await storage.getBookingsBySalon(req.salon!.id);
         
         // Convert new booking time to minutes
+        // Booking reserves [start_at, end_at) where end_at is exclusive
         const newBookingStartMinutes = timeToMinutes(time);
         const newBookingDuration = service.duration;
         const newBookingEndMinutes = newBookingStartMinutes + newBookingDuration;
         
         // Check for conflicts with existing bookings for this stylist on the same date
+        // A booking must reserve [start_at, end_at) for a specific employee_id
+        // New bookings must not overlap existing bookings for the same employee_id
+        // Back-to-back bookings are allowed where end_at == next_start_at
         const hasConflict = existingBookings.some((booking: any) => {
+          // Skip cancelled bookings
           if (booking.status === "cancelled") return false;
+          // Only check bookings for the same stylist
           if (booking.stylistId !== stylistId) return false;
           
+          // Only check bookings on the same date
           const bookingDate = new Date(booking.appointmentDate);
           if (bookingDate.toDateString() !== appointmentDate.toDateString()) return false;
           
@@ -216,7 +229,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const existingBookingStartMinutes = timeToMinutes(booking.appointmentTime);
           const existingBookingEndMinutes = existingBookingStartMinutes + existingBookingDuration;
           
-          // Check if time ranges overlap
+          // Check if time ranges overlap using [start, end) semantics
+          // This prevents overlaps while allowing back-to-back bookings
           return timeRangesOverlap(
             newBookingStartMinutes, newBookingEndMinutes,
             existingBookingStartMinutes, existingBookingEndMinutes
@@ -264,7 +278,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.log(`✅ Booking confirmation emails sent successfully for booking ${booking.id}`);
           })
           .catch(err => {
-            console.error('❌ Error sending confirmation email:', err);
+            console.error('❌ Error sending confirmation email:', {
+              error: err.message || err,
+              stack: err.stack,
+              bookingId: booking.id,
+              clientEmail: bookingWithDetails.client?.email,
+              salonId: req.salon!.id,
+            });
             // Log detailed error information
             if (err.response) {
               console.error('Resend API Error Response:', JSON.stringify(err.response, null, 2));
@@ -272,10 +292,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (err.message) {
               console.error('Error Message:', err.message);
             }
+            // Don't throw - booking is already created, email failure shouldn't break the flow
           });
-      } else {
-        console.warn('⚠️ Booking created but bookingWithDetails is null, cannot send email');
-      }
+        } else {
+          console.warn('⚠️ Booking created but bookingWithDetails is null, cannot send email');
+        }
 
       res.json(bookingWithDetails);
     } catch (error) {

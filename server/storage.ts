@@ -51,7 +51,7 @@ export interface IStorage {
   // Salon Users
   createSalonUser(salonUser: InsertSalonUser): Promise<SalonUser>;
   getUserSalons(userId: string): Promise<SalonUser[]>;
-  getSalonUsers(salonId: string): Promise<Array<SalonUser & { user: User }>>;
+  getSalonUsers(salonId: string): Promise<Array<SalonUser & { user: User | null }>>;
   deleteSalonUser(userId: string, salonId: string): Promise<boolean>;
   
   // Super Admin User Management
@@ -193,7 +193,7 @@ export class DbStorage implements IStorage {
     return await db.select().from(salonUsers).where(eq(salonUsers.userId, userId));
   }
 
-  async getSalonUsers(salonId: string): Promise<Array<SalonUser & { user: User }>> {
+  async getSalonUsers(salonId: string): Promise<Array<SalonUser & { user: User | null }>> {
     const results = await db
       .select({
         salonUser: salonUsers,
@@ -205,7 +205,7 @@ export class DbStorage implements IStorage {
 
     return results.map(r => ({
       ...r.salonUser,
-      user: r.user!,
+      user: r.user, // Can be null if user doesn't exist
     }));
   }
 

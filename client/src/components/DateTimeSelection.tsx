@@ -12,9 +12,10 @@ interface DateTimeSelectionProps {
   initialTime?: string;
   stylistId?: string | null;
   salonSlug: string;
+  serviceDuration?: number; // Duration in minutes - required to check for contiguous free intervals
 }
 
-export default function DateTimeSelection({ onContinue, initialDate, initialTime, stylistId, salonSlug }: DateTimeSelectionProps) {
+export default function DateTimeSelection({ onContinue, initialDate, initialTime, stylistId, salonSlug, serviceDuration = 60 }: DateTimeSelectionProps) {
   const [selectedDate, setSelectedDate] = useState<Date | null>(initialDate || null);
   const [selectedTime, setSelectedTime] = useState<string | null>(initialTime || null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -181,32 +182,36 @@ export default function DateTimeSelection({ onContinue, initialDate, initialTime
     return hours * 60 + minutes;
   };
 
-  // Check if a time slot is booked or overlaps with any blocked range
+  // Check if a time slot can accommodate the full service duration without overlapping any blocked ranges
+  // Returns true if the time slot is NOT available (i.e., booked or would overlap)
   const isTimeSlotBooked = (timeSlot: string) => {
     // First check for exact match (backward compatibility)
     if (bookedSlots.includes(timeSlot)) return true;
     
-    // Check if time slot overlaps with any blocked range
+    // Check if the time slot can accommodate the full service duration
     const slotStartMinutes = timeSlotToMinutes(timeSlot);
-    const slotEndMinutes = slotStartMinutes + 30; // Each time slot is 30 minutes
+    const slotEndMinutes = slotStartMinutes + serviceDuration; // End time for the full service duration
     
+    // Check if this time slot's duration overlaps with any blocked range
+    // Using [start, end) semantics: two ranges overlap if start1 < end2 AND start2 < end1
     return blockedRanges.some((range) => {
       // Use the pre-calculated minutes from the backend, or calculate if not available
       const rangeStartMinutes = range.startMinutes ?? timeSlotToMinutes(range.start);
       const rangeEndMinutes = range.endMinutes ?? (rangeStartMinutes + (range.duration || 60));
       
-      // Check if the time slot overlaps with the blocked range
-      // Two ranges overlap if slotStart < rangeEnd AND rangeStart < slotEnd
+      // Check if the service duration would overlap with the blocked range
+      // Overlap occurs if: slotStart < rangeEnd AND rangeStart < slotEnd
+      // This ensures back-to-back bookings are allowed (where end == next start)
       return slotStartMinutes < rangeEndMinutes && rangeStartMinutes < slotEndMinutes;
     });
   };
 
-  // Clear selected time if it becomes booked
+  // Clear selected time if it becomes booked or can't accommodate service duration
   useEffect(() => {
     if (selectedTime && isTimeSlotBooked(selectedTime)) {
       setSelectedTime(null);
     }
-  }, [selectedTime, bookedSlots]);
+  }, [selectedTime, bookedSlots, blockedRanges, serviceDuration]);
 
   const handleContinue = () => {
     if (selectedDate && selectedTime) {

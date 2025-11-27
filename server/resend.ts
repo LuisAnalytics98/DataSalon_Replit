@@ -8,6 +8,11 @@ async function getCredentials() {
     // Use a default from email if RESEND_FROM_EMAIL is not set
     // Resend requires a verified domain, so you may need to set this
     const fromEmail = process.env.RESEND_FROM_EMAIL || 'noreply@resend.dev';
+    
+    if (!process.env.RESEND_FROM_EMAIL) {
+      console.warn('⚠️ RESEND_FROM_EMAIL not set. Using default "noreply@resend.dev". For production, set RESEND_FROM_EMAIL to a verified domain.');
+    }
+    
     return {
       apiKey: process.env.RESEND_API_KEY,
       fromEmail: fromEmail
@@ -23,7 +28,9 @@ async function getCredentials() {
     : null;
 
   if (!xReplitToken) {
-    throw new Error('RESEND_API_KEY not set and X_REPLIT_TOKEN not found. Please set RESEND_API_KEY environment variable.');
+    const errorMsg = 'RESEND_API_KEY not set and X_REPLIT_TOKEN not found. Please set RESEND_API_KEY environment variable.';
+    console.error('❌', errorMsg);
+    throw new Error(errorMsg);
   }
 
   connectionSettings = await fetch(
@@ -37,9 +44,19 @@ async function getCredentials() {
   ).then(res => res.json()).then(data => data.items?.[0]);
 
   if (!connectionSettings || (!connectionSettings.settings.api_key)) {
-    throw new Error('Resend not connected');
+    const errorMsg = 'Resend connector not properly configured. Please check your Replit connector settings.';
+    console.error('❌', errorMsg);
+    throw new Error(errorMsg);
   }
-  return {apiKey: connectionSettings.settings.api_key, fromEmail: connectionSettings.settings.from_email};
+  
+  const apiKey = connectionSettings.settings.api_key;
+  const fromEmail = connectionSettings.settings.from_email || 'noreply@resend.dev';
+  
+  if (!fromEmail || fromEmail === 'noreply@resend.dev') {
+    console.warn('⚠️ Using default Resend email address. Consider configuring a verified domain in your Resend connector.');
+  }
+  
+  return {apiKey, fromEmail};
 }
 
 // WARNING: Never cache this client.
