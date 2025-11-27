@@ -1,4 +1,5 @@
 import { useState } from "react";
+import * as React from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Stylist, InsertStylist, StylistAvailability, InsertStylistAvailability, Service, User } from "@shared/schema";
@@ -34,8 +35,11 @@ interface AvailabilitySlot {
 export default function StylistsManagement() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isAvailabilityDialogOpen, setIsAvailabilityDialogOpen] = useState(false);
+  const [isServicesDialogOpen, setIsServicesDialogOpen] = useState(false);
   const [editingStylist, setEditingStylist] = useState<Stylist | null>(null);
   const [availabilityStylist, setAvailabilityStylist] = useState<Stylist | null>(null);
+  const [servicesStylist, setServicesStylist] = useState<Stylist | null>(null);
+  const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
   const [formData, setFormData] = useState<InsertStylist>({
     id: "",
     salonId: "", // Will be set when creating/updating
@@ -67,6 +71,18 @@ export default function StylistsManagement() {
       if (!availabilityStylist) return [];
       const response = await fetch(`/api/public/stylists/${availabilityStylist.id}/availability`);
       if (!response.ok) throw new Error("Failed to fetch availability");
+      return await response.json();
+    },
+  });
+
+  // Fetch services for the selected stylist
+  const { data: stylistServices = [] } = useQuery<Service[]>({
+    queryKey: ["/api/admin/stylists", servicesStylist?.id, "services"],
+    enabled: !!servicesStylist,
+    queryFn: async () => {
+      if (!servicesStylist) return [];
+      const response = await fetch(`/api/admin/stylists/${servicesStylist.id}/services`);
+      if (!response.ok) throw new Error("Failed to fetch stylist services");
       return await response.json();
     },
   });
@@ -155,6 +171,30 @@ export default function StylistsManagement() {
       toast({
         title: "Error",
         description: "No se pudieron actualizar los horarios.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const saveServicesMutation = useMutation({
+    mutationFn: async ({ stylistId, serviceIds }: { stylistId: string; serviceIds: string[] }) => {
+      const response = await apiRequest("POST", `/api/admin/stylists/${stylistId}/services`, { serviceIds });
+      return await response.json();
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stylists", variables.stylistId, "services"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stylists"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/public"] }); // Invalidate public endpoints too
+      setIsServicesDialogOpen(false);
+      toast({
+        title: "Servicios actualizados",
+        description: "Los servicios del profesional se han actualizado exitosamente.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "No se pudieron actualizar los servicios.",
         variant: "destructive",
       });
     },
@@ -263,6 +303,38 @@ export default function StylistsManagement() {
   const handleManageAvailability = (stylist: Stylist) => {
     setAvailabilityStylist(stylist);
     setIsAvailabilityDialogOpen(true);
+  };
+
+  const handleManageServices = (stylist: Stylist) => {
+    setServicesStylist(stylist);
+    setIsServicesDialogOpen(true);
+  };
+
+  // Update selectedServiceIds when stylistServices data loads or dialog opens
+  React.useEffect(() => {
+    if (isServicesDialogOpen && servicesStylist) {
+      if (stylistServices.length > 0) {
+        setSelectedServiceIds(stylistServices.map(s => s.id));
+      } else {
+        setSelectedServiceIds([]);
+      }
+    }
+  }, [isServicesDialogOpen, servicesStylist, stylistServices]);
+
+  const toggleServiceSelection = (serviceId: string) => {
+    setSelectedServiceIds(prev => 
+      prev.includes(serviceId)
+        ? prev.filter(id => id !== serviceId)
+        : [...prev, serviceId]
+    );
+  };
+
+  const handleSaveServices = () => {
+    if (!servicesStylist) return;
+    saveServicesMutation.mutate({
+      stylistId: servicesStylist.id,
+      serviceIds: selectedServiceIds,
+    });
   };
 
   const addAvailabilitySlot = () => {
@@ -593,6 +665,16 @@ export default function StylistsManagement() {
                   <Calendar className="w-4 h-4 mr-2" />
                   Gestionar Horarios
                 </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => handleManageServices(stylist)}
+                  data-testid={`button-manage-services-${stylist.id}`}
+                >
+                  <Briefcase className="w-4 h-4 mr-2" />
+                  Gestionar Servicios
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -688,6 +770,66 @@ export default function StylistsManagement() {
               data-testid="button-save-availability"
             >
               {saveAvailabilityMutation.isPending ? "Guardando..." : "Guardar Horarios"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Services Management Dialog */}
+      <Dialog open={isServicesDialogOpen} onOpenChange={setIsServicesDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto" data-testid="dialog-services">
+          <DialogHeader>
+            <DialogTitle>Gestionar Servicios - {servicesStylist?.name}</DialogTitle>
+            <DialogDescription>
+              Selecciona los servicios que este profesional puede realizar
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {services.length === 0 ? (
+              <p className="text-muted-foreground text-center py-8">
+                No hay servicios disponibles. Crea servicios primero.
+              </p>
+            ) : (
+              <div className="space-y-3 max-h-96 overflow-y-auto">
+                {services.map((service) => (
+                  <div
+                    key={service.id}
+                    className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-muted/50"
+                  >
+                    <Checkbox
+                      id={`service-checkbox-${service.id}`}
+                      checked={selectedServiceIds.includes(service.id)}
+                      onCheckedChange={() => toggleServiceSelection(service.id)}
+                    />
+                    <label
+                      htmlFor={`service-checkbox-${service.id}`}
+                      className="flex-1 cursor-pointer"
+                    >
+                      <div className="font-medium">{service.name}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {service.duration} min • {service.currency === 'dolares' ? '$' : '₡'}{service.price}
+                      </div>
+                    </label>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsServicesDialogOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSaveServices}
+              disabled={saveServicesMutation.isPending}
+              data-testid="button-save-services"
+            >
+              {saveServicesMutation.isPending ? "Guardando..." : "Guardar Servicios"}
             </Button>
           </DialogFooter>
         </DialogContent>

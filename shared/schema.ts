@@ -118,6 +118,17 @@ export const stylistAvailability = pgTable("stylist_availability", {
   endTime: text("end_time").notNull(), // Format: "HH:mm" (24-hour)
 });
 
+// Junction table for many-to-many relationship between stylists and services
+export const stylistServices = pgTable("stylist_services", {
+  id: serial("id").primaryKey(),
+  stylistId: varchar("stylist_id").notNull().references(() => stylists.id, { onDelete: "cascade" }),
+  serviceId: varchar("service_id").notNull().references(() => services.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  // Ensure a stylist can only be assigned to a service once
+  index("stylist_services_unique").on(table.stylistId, table.serviceId),
+]);
+
 // Insert schemas
 export const upsertUserSchema = createInsertSchema(users).omit({
   createdAt: true,
@@ -155,6 +166,11 @@ export const insertBookingSchema = createInsertSchema(bookings).omit({
 
 export const insertStylistAvailabilitySchema = createInsertSchema(stylistAvailability).omit({
   id: true,
+});
+
+export const insertStylistServiceSchema = createInsertSchema(stylistServices).omit({
+  id: true,
+  createdAt: true,
 });
 
 export const insertSalonInquirySchema = createInsertSchema(salonInquiries).omit({
@@ -197,6 +213,9 @@ export type InsertBooking = z.infer<typeof insertBookingSchema>;
 
 export type StylistAvailability = typeof stylistAvailability.$inferSelect;
 export type InsertStylistAvailability = z.infer<typeof insertStylistAvailabilitySchema>;
+
+export type StylistService = typeof stylistServices.$inferSelect;
+export type InsertStylistService = z.infer<typeof insertStylistServiceSchema>;
 
 export type SalonInquiry = typeof salonInquiries.$inferSelect;
 export type InsertSalonInquiry = z.infer<typeof insertSalonInquirySchema>;

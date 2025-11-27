@@ -10,6 +10,8 @@ import {
   type InsertStylist,
   type StylistAvailability,
   type InsertStylistAvailability,
+  type StylistService,
+  type InsertStylistService,
   type UpdateBookingStatus,
   type UpdateBookingCompletion,
   type User,
@@ -26,13 +28,14 @@ import {
   services,
   stylists,
   stylistAvailability,
+  stylistServices,
   users,
   salons,
   salonUsers,
   salonInquiries,
 } from "../shared/schema.js";
 import { db } from "./db.js";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 
 export interface IStorage {
   // Users (required for Replit Auth)
@@ -92,6 +95,13 @@ export interface IStorage {
   updateStylistAvailability(id: number, availability: Partial<InsertStylistAvailability>): Promise<StylistAvailability | undefined>;
   deleteStylistAvailability(id: number): Promise<boolean>;
   setStylistAvailability(stylistId: string, salonId: string, availability: InsertStylistAvailability[]): Promise<StylistAvailability[]>;
+  
+  // Stylist Services (many-to-many relationship)
+  getStylistServices(stylistId: string): Promise<Service[]>;
+  getServiceStylists(serviceId: string): Promise<Stylist[]>;
+  addStylistService(stylistId: string, serviceId: string): Promise<StylistService>;
+  removeStylistService(stylistId: string, serviceId: string): Promise<boolean>;
+  setStylistServices(stylistId: string, serviceIds: string[]): Promise<Service[]>;
   
   // Salon Inquiries
   createSalonInquiry(inquiry: InsertSalonInquiry): Promise<SalonInquiry>;
@@ -489,11 +499,89 @@ export class DbStorage implements IStorage {
     return inserted;
   }
 
-  // Salon Inquiries
-  async createSalonInquiry(inquiry: InsertSalonInquiry): Promise<SalonInquiry> {
-    const [salonInquiry] = await db.insert(salonInquiries).values(inquiry).returning();
-    return salonInquiry;
-  }
+    // Stylist Services (many-to-many relationship)
+    async getStylistServices(stylistId: string): Promise<Service[]> {
+      const results = await db
+        .select({
+          service: services,
+        })
+        .from(stylistServices)
+        .innerJoin(services, eq(stylistServices.serviceId, services.id))
+        .where(eq(stylistServices.stylistId, stylistId));
+      
+      return results.map(r => r.service);
+    }
+
+    async getServiceStylists(serviceId: string): Promise<Stylist[]> {
+      const results = await db
+        .select({
+          stylist: stylists,
+        })
+        .from(stylistServices)
+        .innerJoin(stylists, eq(stylistServices.stylistId, stylists.id))
+        .where(eq(stylistServices.serviceId, serviceId));
+      
+      return results.map(r => r.stylist);
+    }
+
+    async addStylistService(stylistId: string, serviceId: string): Promise<StylistService> {
+      // Check if relationship already exists
+      const existing = await db
+        .select()
+        .from(stylistServices)
+        .where(and(
+          eq(stylistServices.stylistId, stylistId),
+          eq(stylistServices.serviceId, serviceId)
+        ));
+      
+      if (existing.length > 0) {
+        return existing[0];
+      }
+
+      const [stylistService] = await db
+        .insert(stylistServices)
+        .values({ stylistId, serviceId })
+        .returning();
+      
+      return stylistService;
+    }
+
+    async removeStylistService(stylistId: string, serviceId: string): Promise<boolean> {
+      const result = await db
+        .delete(stylistServices)
+        .where(and(
+          eq(stylistServices.stylistId, stylistId),
+          eq(stylistServices.serviceId, serviceId)
+        ))
+        .returning();
+      
+      return result.length > 0;
+    }
+
+    async setStylistServices(stylistId: string, serviceIds: string[]): Promise<Service[]> {
+      // Delete existing relationships
+      await db
+        .delete(stylistServices)
+        .where(eq(stylistServices.stylistId, stylistId));
+      
+      // Insert new relationships
+      if (serviceIds.length === 0) {
+        return [];
+      }
+
+      await db
+        .insert(stylistServices)
+        .values(serviceIds.map(serviceId => ({ stylistId, serviceId })));
+      
+      // Return the updated list of services
+      return await this.getStylistServices(stylistId);
+    }
+
+    // Salon Inquiries
+    async createSalonInquiry(inquiry: InsertSalonInquiry): Promise<SalonInquiry> {
+      const [salonInquiry] = await db.insert(salonInquiries).values(inquiry).returning();
+      return salonInquiry;
+    }
 
   async getAllSalonInquiries(): Promise<SalonInquiry[]> {
     return await db.select().from(salonInquiries);

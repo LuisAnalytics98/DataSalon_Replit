@@ -148,15 +148,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get stylists for a specific salon (public booking flow)
-  app.get("/api/public/:salonSlug/stylists", resolveSalonSlug, async (req, res) => {
-    try {
-      const stylists = await storage.getStylistsBySalon(req.salon!.id);
-      res.json(stylists);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch stylists" });
-    }
-  });
+    // Get stylists for a specific salon (public booking flow)
+    // Optional query param: serviceId - filters to only stylists who offer that service
+    app.get("/api/public/:salonSlug/stylists", resolveSalonSlug, async (req, res) => {
+      try {
+        const { serviceId } = req.query;
+        
+        if (serviceId && typeof serviceId === 'string') {
+          // Get only stylists who offer this specific service
+          const stylists = await storage.getServiceStylists(serviceId);
+          // Filter to ensure they belong to this salon
+          const salonStylists = stylists.filter(s => s.salonId === req.salon!.id);
+          res.json(salonStylists);
+        } else {
+          // Return all stylists for the salon
+          const stylists = await storage.getStylistsBySalon(req.salon!.id);
+          res.json(stylists);
+        }
+      } catch (error) {
+        console.error("Error fetching stylists:", error);
+        res.status(500).json({ error: "Failed to fetch stylists" });
+      }
+    });
 
   // Helper function to convert time string (HH:mm or "9:00 AM") to minutes since midnight
   const timeToMinutes = (timeStr: string): number => {
@@ -876,27 +889,152 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/admin/stylists/:id/availability", isAuthenticated, requireSalonMembership, requireRole("owner", "admin"), async (req, res) => {
-    try {
-      const { availability } = req.body;
-      
-      // Validate each availability slot
-      const validatedAvailability = availability.map((slot: any) =>
-        insertStylistAvailabilitySchema.parse({
-          ...slot,
-          stylistId: req.params.id,
-        })
-      );
-      
-      const result = await storage.setStylistAvailability(req.params.id, req.salon!.id, validatedAvailability);
-      res.json(result);
-    } catch (error) {
-      console.error("Error setting stylist availability:", error);
-      res.status(400).json({ error: "Failed to set stylist availability" });
-    }
-  });
+    app.post("/api/admin/stylists/:id/availability", isAuthenticated, requireSalonMembership, requireRole("owner", "admin"), async (req, res) => {
+      try {
+        const { availability } = req.body;
+        
+        // Validate each availability slot
+        const validatedAvailability = availability.map((slot: any) =>
+          insertStylistAvailabilitySchema.parse({
+            ...slot,
+            stylistId: req.params.id,
+          })
+        );
+        
+        const result = await storage.setStylistAvailability(req.params.id, req.salon!.id, validatedAvailability);
+        res.json(result);
+      } catch (error) {
+        console.error("Error setting stylist availability:", error);
+        res.status(400).json({ error: "Failed to set stylist availability" });
+      }
+    });
 
-  // ===== OBJECT STORAGE ROUTES (Protected file uploads, auth required) =====
+    // Stylist Services management (many-to-many relationship)
+    // Get services for a specific stylist
+    app.get("/api/admin/stylists/:id/services", isAuthenticated, requireSalonMembership, async (req, res) => {
+      try {
+        const stylistId = req.params.id;
+        
+        // Verify stylist belongs to salon
+        const stylist = await storage.getStylistById(stylistId);
+        if (!stylist || stylist.salonId !== req.salon!.id) {
+          return res.status(404).json({ error: "Stylist not found or access denied" });
+        }
+        
+        const services = await storage.getStylistServices(stylistId);
+        res.json(services);
+      } catch (error) {
+        console.error("Error fetching stylist services:", error);
+        res.status(500).json({ error: "Failed to fetch stylist services" });
+      }
+    });
+
+    // Get stylists for a specific service
+    app.get("/api/admin/services/:id/stylists", isAuthenticated, requireSalonMembership, async (req, res) => {
+      try {
+        const serviceId = req.params.id;
+        
+        // Verify service belongs to salon
+        const service = await storage.getServiceById(serviceId);
+        if (!service || service.salonId !== req.salon!.id) {
+          return res.status(404).json({ error: "Service not found or access denied" });
+        }
+        
+        const stylists = await storage.getServiceStylists(serviceId);
+        res.json(stylists);
+      } catch (error) {
+        console.error("Error fetching service stylists:", error);
+        res.status(500).json({ error: "Failed to fetch service stylists" });
+      }
+    });
+
+    // Set services for a stylist (replace all existing relationships)
+    app.post("/api/admin/stylists/:id/services", isAuthenticated, requireSalonMembership, requireRole("owner", "admin"), async (req, res) => {
+      try {
+        const stylistId = req.params.id;
+        const { serviceIds } = req.body;
+        
+        if (!Array.isArray(serviceIds)) {
+          return res.status(400).json({ error: "serviceIds must be an array" });
+        }
+        
+        // Verify stylist belongs to salon
+        const stylist = await storage.getStylistById(stylistId);
+        if (!stylist || stylist.salonId !== req.salon!.id) {
+          return res.status(404).json({ error: "Stylist not found or access denied" });
+        }
+        
+        // Verify all services belong to salon
+        const allServices = await storage.getServicesBySalon(req.salon!.id);
+        const validServiceIds = allServices.map(s => s.id);
+        const invalidServiceIds = serviceIds.filter((id: string) => !validServiceIds.includes(id));
+        
+        if (invalidServiceIds.length > 0) {
+          return res.status(400).json({ 
+            error: "Some services do not belong to this salon",
+            invalidServiceIds 
+          });
+        }
+        
+        const services = await storage.setStylistServices(stylistId, serviceIds);
+        res.json(services);
+      } catch (error) {
+        console.error("Error setting stylist services:", error);
+        res.status(400).json({ error: "Failed to set stylist services" });
+      }
+    });
+
+    // Add a service to a stylist
+    app.post("/api/admin/stylists/:id/services/:serviceId", isAuthenticated, requireSalonMembership, requireRole("owner", "admin"), async (req, res) => {
+      try {
+        const stylistId = req.params.id;
+        const serviceId = req.params.serviceId;
+        
+        // Verify stylist belongs to salon
+        const stylist = await storage.getStylistById(stylistId);
+        if (!stylist || stylist.salonId !== req.salon!.id) {
+          return res.status(404).json({ error: "Stylist not found or access denied" });
+        }
+        
+        // Verify service belongs to salon
+        const service = await storage.getServiceById(serviceId);
+        if (!service || service.salonId !== req.salon!.id) {
+          return res.status(404).json({ error: "Service not found or access denied" });
+        }
+        
+        const stylistService = await storage.addStylistService(stylistId, serviceId);
+        res.json(stylistService);
+      } catch (error) {
+        console.error("Error adding stylist service:", error);
+        res.status(400).json({ error: "Failed to add stylist service" });
+      }
+    });
+
+    // Remove a service from a stylist
+    app.delete("/api/admin/stylists/:id/services/:serviceId", isAuthenticated, requireSalonMembership, requireRole("owner", "admin"), async (req, res) => {
+      try {
+        const stylistId = req.params.id;
+        const serviceId = req.params.serviceId;
+        
+        // Verify stylist belongs to salon
+        const stylist = await storage.getStylistById(stylistId);
+        if (!stylist || stylist.salonId !== req.salon!.id) {
+          return res.status(404).json({ error: "Stylist not found or access denied" });
+        }
+        
+        const success = await storage.removeStylistService(stylistId, serviceId);
+        if (!success) {
+          return res.status(404).json({ error: "Service relationship not found" });
+        }
+        
+        res.json({ success: true });
+      } catch (error) {
+        console.error("Error removing stylist service:", error);
+        res.status(400).json({ error: "Failed to remove stylist service" });
+      }
+    });
+
+    // ===== OBJECT STORAGE ROUTES (Protected file uploads, auth required) =====
   
   // Get presigned upload URL for object entity
   app.post("/api/objects/upload", isAuthenticated, async (req, res) => {

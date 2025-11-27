@@ -65,9 +65,17 @@ export default function Home() {
     queryKey: [`/api/public/${salonSlug}/services`],
   });
 
-  // Fetch stylists from backend
+  // Fetch stylists from backend - filter by service if one is selected
   const { data: stylists = [], isLoading: stylistsLoading } = useQuery<Stylist[]>({
-    queryKey: [`/api/public/${salonSlug}/stylists`],
+    queryKey: [`/api/public/${salonSlug}/stylists`, bookingData.serviceId],
+    queryFn: async () => {
+      const url = bookingData.serviceId 
+        ? `/api/public/${salonSlug}/stylists?serviceId=${bookingData.serviceId}`
+        : `/api/public/${salonSlug}/stylists`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("Failed to fetch stylists");
+      return await response.json() as Stylist[];
+    },
   });
 
   // Fetch salon information
@@ -153,19 +161,10 @@ export default function Home() {
     rating: stylist.rating / 10, // Convert from 0-50 to 0-5
   }));
 
-  // Filter stylists by selected service
-  const filteredStylists = selectedService
-    ? (() => {
-        const matched = stylistsWithImages.filter(stylist =>
-          stylist.specialties.some(specialty =>
-            specialty.toLowerCase().includes(selectedService.name.split(' ')[0].toLowerCase()) ||
-            selectedService.name.toLowerCase().includes(specialty.toLowerCase())
-          )
-        );
-        // If no stylists match, show all stylists as fallback
-        return matched.length > 0 ? matched : stylistsWithImages;
-      })()
-    : stylistsWithImages;
+  // Stylists are now filtered by the API based on the selected service
+  // The API endpoint /api/public/:salonSlug/stylists?serviceId=X returns only stylists who offer that service
+  // No client-side filtering needed - the backend handles it using the stylist_services junction table
+  const filteredStylists = stylistsWithImages;
 
   return (
     <div className="min-h-screen bg-background">
