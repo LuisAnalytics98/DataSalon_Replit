@@ -12,8 +12,20 @@ export async function sendBookingConfirmationEmail(
   try {
     // Validate that we have the necessary data
     if (!booking.client?.email) {
-      throw new Error('Client email is missing from booking data');
+      const errorMsg = 'Client email is missing from booking data';
+      console.error(`❌ ${errorMsg}`, { bookingId: booking.id, bookingReference: booking.bookingReference });
+      throw new Error(errorMsg);
     }
+
+    if (!booking.client.email.includes('@')) {
+      const errorMsg = `Invalid client email format: ${booking.client.email}`;
+      console.error(`❌ ${errorMsg}`, { bookingId: booking.id });
+      throw new Error(errorMsg);
+    }
+
+    console.log(`📧 Preparing to send emails for booking ${booking.id} (${booking.bookingReference})`);
+    console.log(`   Client: ${booking.client.name} <${booking.client.email}>`);
+    console.log(`   Salon: ${salon.name} (${salon.id})`);
 
     let client, fromEmail;
     try {
@@ -21,20 +33,36 @@ export async function sendBookingConfirmationEmail(
       client = resendClient.client;
       fromEmail = resendClient.fromEmail;
       
+      console.log(`📧 Resend client initialized. From email: ${fromEmail}`);
+      
       if (!fromEmail || fromEmail === 'noreply@resend.dev') {
         console.warn('⚠️ Using default Resend email address. Consider setting RESEND_FROM_EMAIL environment variable with a verified domain.');
+        console.warn('   Note: Emails from noreply@resend.dev may have delivery limitations.');
       }
     } catch (error: any) {
-      console.error('❌ Failed to initialize Resend client:', error);
+      console.error('❌ Failed to initialize Resend client:', {
+        error: error.message || error,
+        stack: error.stack,
+        hasResendApiKey: !!process.env.RESEND_API_KEY,
+        resendApiKeyLength: process.env.RESEND_API_KEY?.length || 0,
+      });
       throw new Error(`Failed to initialize email service: ${error.message || 'Unknown error'}`);
     }
 
   // Use Vercel URL if available, otherwise try Replit domains, fallback to localhost
-  const baseUrl = process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : process.env.REPLIT_DOMAINS
-    ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
-    : 'http://localhost:5000';
+  // VERCEL_URL might already include https://, so check for that
+  let baseUrl = 'http://localhost:5000';
+  if (process.env.VERCEL_URL) {
+    baseUrl = process.env.VERCEL_URL.startsWith('http')
+      ? process.env.VERCEL_URL
+      : `https://${process.env.VERCEL_URL}`;
+  } else if (process.env.REPLIT_DOMAINS) {
+    baseUrl = `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`;
+  } else if (process.env.NEXT_PUBLIC_APP_URL) {
+    baseUrl = process.env.NEXT_PUBLIC_APP_URL;
+  }
+  
+  console.log(`📧 Using base URL for email links: ${baseUrl}`);
 
   const confirmUrl = `${baseUrl}/api/bookings/${booking.id}/confirm?token=${confirmToken}`;
   const cancelUrl = `${baseUrl}/api/bookings/${booking.id}/cancel?token=${confirmToken}`;
@@ -312,16 +340,198 @@ export async function sendBookingConfirmationEmail(
       // Don't throw - we can still send to the client even if admin emails fail
     }
 
-    // Send copy to all salon admins/owners (not salon.email)
+    // Send copy to all salon admins/owners with a notification-style email
     if (adminEmails.length > 0) {
       console.log(`📧 Attempting to send notification emails to ${adminEmails.length} admin(s)/owner(s)`);
+      
+      // Create admin notification email (different from client email)
+      const adminEmailHtml = `
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Nueva Reserva - ${salon.name}</title>
+          <style>
+            body {
+              font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+              line-height: 1.6;
+              color: #1a1a1a;
+              background-color: #f8f9fa;
+              margin: 0;
+              padding: 0;
+            }
+            .container {
+              max-width: 600px;
+              margin: 0 auto;
+              background-color: #ffffff;
+            }
+            .header {
+              background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+              padding: 40px 30px;
+              text-align: center;
+            }
+            .header h1 {
+              font-family: 'Playfair Display', serif;
+              color: #D4AF37;
+              margin: 0;
+              font-size: 32px;
+              font-weight: 600;
+            }
+            .content {
+              padding: 40px 30px;
+            }
+            .notification-badge {
+              background-color: #D4AF37;
+              color: #1a1a1a;
+              padding: 8px 16px;
+              border-radius: 20px;
+              font-weight: 600;
+              display: inline-block;
+              margin-bottom: 20px;
+            }
+            .booking-details {
+              background-color: #f8f9fa;
+              border-left: 4px solid #D4AF37;
+              padding: 25px;
+              margin: 25px 0;
+            }
+            .detail-row {
+              display: flex;
+              justify-content: space-between;
+              padding: 12px 0;
+              border-bottom: 1px solid #e0e0e0;
+            }
+            .detail-row:last-child {
+              border-bottom: none;
+            }
+            .detail-label {
+              font-weight: 600;
+              color: #666;
+            }
+            .detail-value {
+              color: #1a1a1a;
+              font-weight: 500;
+            }
+            .action-button {
+              display: inline-block;
+              padding: 14px 35px;
+              margin: 20px 0;
+              background-color: #D4AF37;
+              color: #1a1a1a;
+              text-decoration: none;
+              border-radius: 6px;
+              font-weight: 600;
+              font-size: 16px;
+            }
+            .footer {
+              background-color: #1a1a1a;
+              color: #e0e0e0;
+              text-align: center;
+              padding: 25px;
+              font-size: 14px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>${salon.name}</h1>
+              <p style="color: #e0e0e0; margin: 10px 0 0;">Nueva Reserva Recibida</p>
+            </div>
+            
+            <div class="content">
+              <div class="notification-badge">NUEVA RESERVA</div>
+              
+              <p>Has recibido una nueva reserva en tu salón:</p>
+              
+              <div class="booking-details">
+                <h2 style="font-family: 'Playfair Display', serif; color: #1a1a1a; margin-top: 0; font-size: 24px;">Detalles de la Reserva</h2>
+                
+                <div class="detail-row">
+                  <span class="detail-label">Referencia:</span>
+                  <span class="detail-value"><strong>${booking.bookingReference}</strong></span>
+                </div>
+                
+                <div class="detail-row">
+                  <span class="detail-label">Cliente:</span>
+                  <span class="detail-value">${booking.client.name}</span>
+                </div>
+                
+                <div class="detail-row">
+                  <span class="detail-label">Email del Cliente:</span>
+                  <span class="detail-value">${booking.client.email}</span>
+                </div>
+                
+                <div class="detail-row">
+                  <span class="detail-label">Teléfono del Cliente:</span>
+                  <span class="detail-value">${booking.client.phone}</span>
+                </div>
+                
+                <div class="detail-row">
+                  <span class="detail-label">Servicio:</span>
+                  <span class="detail-value">${booking.service.name}</span>
+                </div>
+                
+                <div class="detail-row">
+                  <span class="detail-label">Duración:</span>
+                  <span class="detail-value">${booking.service.duration} min</span>
+                </div>
+                
+                <div class="detail-row">
+                  <span class="detail-label">Profesional:</span>
+                  <span class="detail-value">${booking.stylist?.name || 'Por asignar'}</span>
+                </div>
+                
+                <div class="detail-row">
+                  <span class="detail-label">Fecha:</span>
+                  <span class="detail-value">${appointmentDate}</span>
+                </div>
+                
+                <div class="detail-row">
+                  <span class="detail-label">Hora:</span>
+                  <span class="detail-value">${formattedTime}</span>
+                </div>
+                
+                <div class="detail-row">
+                  <span class="detail-label">Precio:</span>
+                  <span class="detail-value">${booking.service.currency === 'dolares' ? '$' : '₡'}${booking.service.price}</span>
+                </div>
+                
+                ${booking.service.reservationAmount ? `
+                <div class="detail-row">
+                  <span class="detail-label">Monto de Reserva:</span>
+                  <span class="detail-value" style="color: #D4AF37; font-weight: 700;">${booking.service.currency === 'dolares' ? '$' : '₡'}${booking.service.reservationAmount}</span>
+                </div>
+                ` : ''}
+              </div>
+              
+              <div style="text-align: center;">
+                <a href="${baseUrl}/admin" class="action-button">Ver en Panel de Administración</a>
+              </div>
+              
+              ${booking.client.notes ? `
+              <div style="background-color: #fff9e6; border-left: 4px solid #D4AF37; padding: 20px; margin: 25px 0;">
+                <p style="margin: 0; color: #856404;"><strong>Notas del Cliente:</strong> ${booking.client.notes}</p>
+              </div>
+              ` : ''}
+            </div>
+            
+            <div class="footer">
+              <p>© ${new Date().getFullYear()} ${salon.name}. Todos los derechos reservados.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+      
       const adminEmailPromises = adminEmails.map(async (adminEmail) => {
         try {
           const adminEmailResult = await client.emails.send({
             from: fromEmail,
             to: adminEmail,
-            subject: `Nueva Reserva - ${booking.client.name} - ${appointmentDate}`,
-            html: emailHtml,
+            subject: `🔔 Nueva Reserva - ${booking.client.name} - ${appointmentDate} ${formattedTime}`,
+            html: adminEmailHtml,
           });
 
           if (adminEmailResult.error) {

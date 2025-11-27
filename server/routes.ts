@@ -285,19 +285,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const bookingWithDetails = await storage.getBookingById(booking.id);
 
       // Send confirmation email asynchronously (don't block response)
+      // But ensure it's actually attempted and errors are logged
       if (bookingWithDetails) {
+        // Log that we're attempting to send emails
+        console.log(`📧 Initiating email send for booking ${booking.id} to client ${bookingWithDetails.client?.email}`);
+        
         sendBookingConfirmationEmail(bookingWithDetails, req.salon!, confirmToken)
           .then(() => {
             console.log(`✅ Booking confirmation emails sent successfully for booking ${booking.id}`);
           })
           .catch(err => {
+            // Enhanced error logging
             console.error('❌ Error sending confirmation email:', {
               error: err.message || err,
               stack: err.stack,
               bookingId: booking.id,
+              bookingReference: booking.bookingReference,
               clientEmail: bookingWithDetails.client?.email,
               salonId: req.salon!.id,
+              salonName: req.salon!.name,
             });
+            
             // Log detailed error information
             if (err.response) {
               console.error('Resend API Error Response:', JSON.stringify(err.response, null, 2));
@@ -305,7 +313,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (err.message) {
               console.error('Error Message:', err.message);
             }
+            
+            // Check for common issues
+            if (err.message?.includes('RESEND_API_KEY')) {
+              console.error('🔴 CRITICAL: RESEND_API_KEY is not configured. Please set it in your environment variables.');
+            }
+            if (err.message?.includes('Failed to initialize email service')) {
+              console.error('🔴 CRITICAL: Email service initialization failed. Check your Resend configuration.');
+            }
+            
             // Don't throw - booking is already created, email failure shouldn't break the flow
+            // But log it prominently so it can be fixed
           });
         } else {
           console.warn('⚠️ Booking created but bookingWithDetails is null, cannot send email');
